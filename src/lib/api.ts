@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosInstance } from "axios";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://personal-assistant-for-life-on-campus-production.up.railway.app";
+  "https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
