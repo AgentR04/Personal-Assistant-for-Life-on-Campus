@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://personal-assistant-for-life-on-campus-production.up.railway.app';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({

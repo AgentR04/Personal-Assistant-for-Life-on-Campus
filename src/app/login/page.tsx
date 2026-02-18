@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Bot, User, Shield, ArrowRight, Loader2, QrCode, X } from "lucide-react";
+import {
+  ArrowRight,
+  Bot,
+  Loader2,
+  QrCode,
+  Shield,
+  User,
+  X,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
+import { useState } from "react";
 
 type UserType = "student" | "admin" | null;
 
@@ -30,7 +38,7 @@ export default function LoginPage() {
       return;
 
       /* PRODUCTION CODE (uncomment when backend is ready):
-      const response = await fetch("http://localhost:3001/api/v1/auth/send-otp", {
+      const response = await fetch("https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ admissionNumber })
@@ -59,20 +67,23 @@ export default function LoginPage() {
     try {
       // Clear any old tokens first
       localStorage.clear();
-      
+
       // TEST MODE: Auto-create user and login
       const isAdmin = admissionNumber.toUpperCase().includes("ADMIN");
       const role = isAdmin ? "admin" : "student";
-      
+
       // Try to login with backend (will auto-create user if doesn't exist)
-      const response = await fetch("http://localhost:3002/api/v1/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          admissionNumber, 
-          otp // In test mode, backend should accept any OTP
-        })
-      });
+      const response = await fetch(
+        "https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1/auth/verify-otp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            admissionNumber,
+            otp, // In test mode, backend should accept any OTP
+          }),
+        },
+      );
 
       const data = await response.json();
 
@@ -82,22 +93,28 @@ export default function LoginPage() {
         console.log("User data:", data.data.user);
         console.log("Role:", data.data.user.role);
         console.log("Token:", data.data.accessToken.substring(0, 20) + "...");
-        
+
         localStorage.setItem("token", data.data.accessToken);
         localStorage.setItem("userRole", data.data.user.role);
         localStorage.setItem("userName", data.data.user.name);
         localStorage.setItem("admissionNumber", admissionNumber);
-        
+
         console.log("Stored in localStorage:");
-        console.log("- token:", localStorage.getItem("token")?.substring(0, 20) + "...");
+        console.log(
+          "- token:",
+          localStorage.getItem("token")?.substring(0, 20) + "...",
+        );
         console.log("- userRole:", localStorage.getItem("userRole"));
         console.log("- userName:", localStorage.getItem("userName"));
-        
+
         // Small delay to ensure localStorage is written
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log("Redirecting to:", data.data.user.role === "admin" ? "/admin" : "/dashboard");
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        console.log(
+          "Redirecting to:",
+          data.data.user.role === "admin" ? "/admin" : "/dashboard",
+        );
+
         // Use router.push for proper Next.js navigation
         if (data.data.user.role === "admin") {
           router.push("/admin");
@@ -109,12 +126,15 @@ export default function LoginPage() {
         console.warn("Backend login failed, using test mode");
         localStorage.setItem("token", "test-token-" + Date.now());
         localStorage.setItem("userRole", role);
-        localStorage.setItem("userName", isAdmin ? "Test Admin" : "Test Student");
+        localStorage.setItem(
+          "userName",
+          isAdmin ? "Test Admin" : "Test Student",
+        );
         localStorage.setItem("admissionNumber", admissionNumber);
-        
+
         // Small delay to ensure localStorage is written
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         if (role === "admin") {
           router.push("/admin");
         } else {
@@ -195,14 +215,28 @@ export default function LoginPage() {
               </p>
 
               <div className="mt-4 rounded-xl bg-secondary/50 border border-border/50 p-4">
-                <p className="text-xs font-semibold mb-2">🧪 Test Credentials:</p>
+                <p className="text-xs font-semibold mb-2">
+                  🧪 Test Credentials:
+                </p>
                 <div className="space-y-1 text-xs text-muted-foreground">
-                  <p>• Student: <code className="bg-background px-2 py-0.5 rounded">CS-2026-001</code></p>
-                  <p>• Admin: <code className="bg-background px-2 py-1 rounded">ADMIN-001</code></p>
-                  <p className="mt-2 text-[10px]">Any 6-digit OTP will work in test mode</p>
+                  <p>
+                    • Student:{" "}
+                    <code className="bg-background px-2 py-0.5 rounded">
+                      CS-2026-001
+                    </code>
+                  </p>
+                  <p>
+                    • Admin:{" "}
+                    <code className="bg-background px-2 py-1 rounded">
+                      ADMIN-001
+                    </code>
+                  </p>
+                  <p className="mt-2 text-[10px]">
+                    Any 6-digit OTP will work in test mode
+                  </p>
                 </div>
               </div>
-              
+
               {/* QR Code Button */}
               <button
                 onClick={() => setShowQR(true)}
@@ -213,20 +247,29 @@ export default function LoginPage() {
               </button>
             </div>
           )}
-          
+
           {/* QR Code Modal */}
           {showQR && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setShowQR(false)}>
-              <div className="w-full max-w-sm rounded-3xl border border-border/50 bg-card p-6 shadow-xl neu-flat" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+              onClick={() => setShowQR(false)}
+            >
+              <div
+                className="w-full max-w-sm rounded-3xl border border-border/50 bg-card p-6 shadow-xl neu-flat"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Scan to Login</h3>
-                  <button onClick={() => setShowQR(false)} className="text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => setShowQR(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
                 <div className="flex flex-col items-center">
                   <div className="p-4 bg-white rounded-2xl">
-                    <QRCodeSVG 
+                    <QRCodeSVG
                       value={`${window.location.origin}/login?quick=true&type=student`}
                       size={200}
                       level="H"
@@ -258,9 +301,11 @@ export default function LoginPage() {
               </button>
 
               <div className="mb-6 flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  userType === "admin" ? "bg-chart-4/15" : "bg-chart-1/15"
-                }`}>
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                    userType === "admin" ? "bg-chart-4/15" : "bg-chart-1/15"
+                  }`}
+                >
                   {userType === "admin" ? (
                     <Shield className="h-5 w-5 text-chart-4" />
                   ) : (
@@ -286,7 +331,9 @@ export default function LoginPage() {
                     type="text"
                     value={admissionNumber}
                     onChange={(e) => setAdmissionNumber(e.target.value)}
-                    placeholder={userType === "admin" ? "ADMIN-001" : "CS-2026-001"}
+                    placeholder={
+                      userType === "admin" ? "ADMIN-001" : "CS-2026-001"
+                    }
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:border-chart-1 focus:outline-none focus:ring-2 focus:ring-chart-1/20"
                     required
                   />
@@ -355,7 +402,9 @@ export default function LoginPage() {
                   <input
                     type="text"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     placeholder="000000"
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-center text-2xl font-mono tracking-widest focus:border-chart-1 focus:outline-none focus:ring-2 focus:ring-chart-1/20"
                     required

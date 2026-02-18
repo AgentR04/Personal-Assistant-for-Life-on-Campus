@@ -40,8 +40,20 @@ const PORT = process.env.PORT || 3001;
 app.use(helmet());
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : true, // Allow all origins in development
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
+      ].filter(Boolean) as string[];
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked by CORS: ${origin}`);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );
