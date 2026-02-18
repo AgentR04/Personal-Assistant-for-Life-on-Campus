@@ -1,42 +1,65 @@
-import Bull from 'bull';
-import { logger } from '../utils/logger';
+import Bull from "bull";
+import { logger } from "../utils/logger";
 
 // Redis configuration
-const redisConfig = process.env.REDIS_URL
-  ? {
-      redis: process.env.REDIS_URL
-    }
-  : {
+// Redis configuration
+let redisConfig: Bull.QueueOptions;
+
+if (process.env.REDIS_URL) {
+  try {
+    const url = new URL(process.env.REDIS_URL);
+    redisConfig = {
       redis: {
-        host: 'localhost',
-        port: 6379
-      }
+        host: url.hostname,
+        port: Number(url.port) || 6379,
+        password: process.env.REDIS_PASSWORD || url.password || undefined,
+      },
     };
+  } catch (e) {
+    logger.warn("Invalid REDIS_URL, falling back to localhost");
+    redisConfig = {
+      redis: {
+        host: "localhost",
+        port: 6379,
+      },
+    };
+  }
+} else {
+  redisConfig = {
+    redis: {
+      host: "localhost",
+      port: 6379,
+    },
+  };
+}
 
 // Create queues
-export const documentProcessingQueue = new Bull('document-processing', redisConfig);
-export const notificationQueue = new Bull('notifications', redisConfig);
+export const documentProcessingQueue = new Bull(
+  "document-processing",
+  redisConfig,
+);
+export const notificationQueue = new Bull("notifications", redisConfig);
 
 // Queue event handlers
-documentProcessingQueue.on('completed', (job) => {
+documentProcessingQueue.on("completed", (job) => {
   logger.info(`Document processing job ${job.id} completed`);
 });
 
-documentProcessingQueue.on('failed', (job, err) => {
+documentProcessingQueue.on("failed", (job, err) => {
   logger.error(`Document processing job ${job?.id} failed:`, err);
 });
 
-notificationQueue.on('completed', (job) => {
+notificationQueue.on("completed", (job) => {
   logger.info(`Notification job ${job.id} completed`);
 });
 
-notificationQueue.on('failed', (job, err) => {
+notificationQueue.on("failed", (job, err) => {
   logger.error(`Notification job ${job?.id} failed:`, err);
 });
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, closing queues...');
+process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, closing queues...");
   await documentProcessingQueue.close();
   await notificationQueue.close();
 });
@@ -54,11 +77,11 @@ export class QueueService {
     return documentProcessingQueue.add(data, {
       attempts: 3,
       backoff: {
-        type: 'exponential',
-        delay: 2000
+        type: "exponential",
+        delay: 2000,
       },
       removeOnComplete: true,
-      removeOnFail: false
+      removeOnFail: false,
     });
   }
 
@@ -67,7 +90,7 @@ export class QueueService {
    */
   static async addNotificationJob(data: {
     userId: string;
-    type: 'document_verified' | 'document_rejected' | 'document_needs_review';
+    type: "document_verified" | "document_rejected" | "document_needs_review";
     documentId: string;
     message: string;
     priority?: number;
@@ -76,10 +99,10 @@ export class QueueService {
       priority: data.priority || 5,
       attempts: 3,
       backoff: {
-        type: 'exponential',
-        delay: 1000
+        type: "exponential",
+        delay: 1000,
       },
-      removeOnComplete: true
+      removeOnComplete: true,
     });
   }
 
@@ -91,29 +114,30 @@ export class QueueService {
       documentProcessingQueue.getWaitingCount(),
       documentProcessingQueue.getActiveCount(),
       documentProcessingQueue.getCompletedCount(),
-      documentProcessingQueue.getFailedCount()
+      documentProcessingQueue.getFailedCount(),
     ]);
 
-    const [notifWaiting, notifActive, notifCompleted, notifFailed] = await Promise.all([
-      notificationQueue.getWaitingCount(),
-      notificationQueue.getActiveCount(),
-      notificationQueue.getCompletedCount(),
-      notificationQueue.getFailedCount()
-    ]);
+    const [notifWaiting, notifActive, notifCompleted, notifFailed] =
+      await Promise.all([
+        notificationQueue.getWaitingCount(),
+        notificationQueue.getActiveCount(),
+        notificationQueue.getCompletedCount(),
+        notificationQueue.getFailedCount(),
+      ]);
 
     return {
       documentProcessing: {
         waiting: docWaiting,
         active: docActive,
         completed: docCompleted,
-        failed: docFailed
+        failed: docFailed,
       },
       notifications: {
         waiting: notifWaiting,
         active: notifActive,
         completed: notifCompleted,
-        failed: notifFailed
-      }
+        failed: notifFailed,
+      },
     };
   }
 }
