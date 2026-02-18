@@ -72,58 +72,49 @@ export default function LoginPage() {
       const isAdmin = admissionNumber.toUpperCase().includes("ADMIN");
       const role = isAdmin ? "admin" : "student";
 
+      let loginSuccess = false;
+
       // Try to login with backend (will auto-create user if doesn't exist)
-      const response = await fetch(
-        "https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1/auth/verify-otp",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            admissionNumber,
-            otp, // In test mode, backend should accept any OTP
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Store real token from backend
-        console.log("=== LOGIN SUCCESS ===");
-        console.log("User data:", data.data.user);
-        console.log("Role:", data.data.user.role);
-        console.log("Token:", data.data.accessToken.substring(0, 20) + "...");
-
-        localStorage.setItem("token", data.data.accessToken);
-        localStorage.setItem("userRole", data.data.user.role);
-        localStorage.setItem("userName", data.data.user.name);
-        localStorage.setItem("admissionNumber", admissionNumber);
-
-        console.log("Stored in localStorage:");
-        console.log(
-          "- token:",
-          localStorage.getItem("token")?.substring(0, 20) + "...",
-        );
-        console.log("- userRole:", localStorage.getItem("userRole"));
-        console.log("- userName:", localStorage.getItem("userName"));
-
-        // Small delay to ensure localStorage is written
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        console.log(
-          "Redirecting to:",
-          data.data.user.role === "admin" ? "/admin" : "/dashboard",
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1"}/auth/verify-otp`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              admissionNumber,
+              otp,
+            }),
+          },
         );
 
-        // Use router.push for proper Next.js navigation
-        if (data.data.user.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/dashboard");
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Store real token from backend
+          console.log("=== LOGIN SUCCESS (Backend) ===");
+          localStorage.setItem("token", data.data.accessToken);
+          localStorage.setItem("userRole", data.data.user.role);
+          localStorage.setItem("userName", data.data.user.name);
+          localStorage.setItem("admissionNumber", admissionNumber);
+          localStorage.setItem("testMode", "false");
+          loginSuccess = true;
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          if (data.data.user.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/dashboard");
+          }
         }
-      } else {
-        // If backend fails, fall back to test mode
-        console.warn("Backend login failed, using test mode");
+      } catch (backendErr) {
+        console.warn("Backend login failed:", backendErr);
+      }
+
+      // Fallback: test mode if backend login didn't work
+      if (!loginSuccess) {
+        console.warn("Using test mode login (no backend auth)");
         localStorage.setItem("token", "test-token-" + Date.now());
         localStorage.setItem("userRole", role);
         localStorage.setItem(
@@ -131,8 +122,8 @@ export default function LoginPage() {
           isAdmin ? "Test Admin" : "Test Student",
         );
         localStorage.setItem("admissionNumber", admissionNumber);
+        localStorage.setItem("testMode", "true");
 
-        // Small delay to ensure localStorage is written
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         if (role === "admin") {
@@ -142,7 +133,7 @@ export default function LoginPage() {
         }
       }
     } catch (err) {
-      setError("Network error. Please try again.");
+      setError("Login failed. Please try again.");
     } finally {
       setLoading(false);
     }

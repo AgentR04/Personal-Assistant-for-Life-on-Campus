@@ -32,14 +32,17 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      // But don't redirect if we're already on the login page
-      if (!window.location.pathname.includes("/login")) {
+      // Don't redirect if in test mode or already on login page
+      const isTestMode =
+        typeof window !== "undefined" &&
+        localStorage.getItem("testMode") === "true";
+      if (!isTestMode && !window.location.pathname.includes("/login")) {
         console.error("API returned 401 - redirecting to login");
         localStorage.removeItem("token");
         localStorage.removeItem("userRole");
         localStorage.removeItem("userName");
         localStorage.removeItem("admissionNumber");
+        localStorage.removeItem("testMode");
         window.location.href = "/login";
       }
     }
