@@ -32,19 +32,8 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Don't redirect if in test mode or already on login page
-      const isTestMode =
-        typeof window !== "undefined" &&
-        localStorage.getItem("testMode") === "true";
-      if (!isTestMode && !window.location.pathname.includes("/login")) {
-        console.error("API returned 401 - redirecting to login");
-        localStorage.removeItem("token");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("userName");
-        localStorage.removeItem("admissionNumber");
-        localStorage.removeItem("testMode");
-        window.location.href = "/login";
-      }
+      // Just log it - let each page handle auth errors gracefully
+      console.warn("API returned 401 for:", error.config?.url);
     }
     return Promise.reject(error);
   },

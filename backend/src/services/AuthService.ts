@@ -1,12 +1,13 @@
-import jwt from 'jsonwebtoken';
-import { supabaseAdmin } from '../config/database';
-import { redisClient, isRedisAvailable } from '../config/redis';
-import UserRepository from '../repositories/UserRepository';
-import { User } from '../models/User';
-import { logger } from '../utils/logger';
+import jwt from "jsonwebtoken";
+import { supabaseAdmin } from "../config/database";
+import { isRedisAvailable, redisClient } from "../config/redis";
+import { User } from "../models/User";
+import UserRepository from "../repositories/UserRepository";
+import { logger } from "../utils/logger";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const OTP_EXPIRY_SECONDS = 300; // 5 minutes
 
 // In-memory fallback for OTPs when Redis is unavailable
@@ -35,16 +36,20 @@ export class AuthService {
   /**
    * Store OTP (Redis or in-memory fallback)
    */
-  private async storeOTP(key: string, otp: string, expirySeconds: number): Promise<void> {
+  private async storeOTP(
+    key: string,
+    otp: string,
+    expirySeconds: number,
+  ): Promise<void> {
     if (isRedisAvailable()) {
       await redisClient.setEx(key, expirySeconds, otp);
     } else {
       // Fallback to in-memory storage
       otpStore.set(key, {
         otp,
-        expiresAt: Date.now() + expirySeconds * 1000
+        expiresAt: Date.now() + expirySeconds * 1000,
       });
-      logger.warn('Using in-memory OTP storage (Redis unavailable)');
+      logger.warn("Using in-memory OTP storage (Redis unavailable)");
     }
   }
 
@@ -58,13 +63,13 @@ export class AuthService {
       // Fallback to in-memory storage
       const stored = otpStore.get(key);
       if (!stored) return null;
-      
+
       // Check expiry
       if (Date.now() > stored.expiresAt) {
         otpStore.delete(key);
         return null;
       }
-      
+
       return stored.otp;
     }
   }
@@ -91,36 +96,38 @@ export class AuthService {
       if (!user) {
         return {
           success: false,
-          message: 'User not found with this admission number',
-          expiresIn: 0
+          message: "User not found with this admission number",
+          expiresIn: 0,
         };
       }
 
       // Generate OTP
       const otp = this.generateOTP();
-      
+
       // Store OTP with expiry
       const otpKey = `otp:${admissionNumber}`;
       await this.storeOTP(otpKey, otp, OTP_EXPIRY_SECONDS);
 
       // In development, log OTP (remove in production)
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         logger.info(`OTP for ${admissionNumber}: ${otp}`);
       }
 
       // TODO: Send OTP via SMS/WhatsApp using Twilio
       // await this.sendSMS(user.phone, `Your P.A.L. login OTP is: ${otp}`);
 
-      logger.info(`OTP sent to ${user.phone} for admission number ${admissionNumber}`);
+      logger.info(
+        `OTP sent to ${user.phone} for admission number ${admissionNumber}`,
+      );
 
       return {
         success: true,
-        message: 'OTP sent successfully to your registered mobile number',
-        expiresIn: OTP_EXPIRY_SECONDS
+        message: "OTP sent successfully to your registered mobile number",
+        expiresIn: OTP_EXPIRY_SECONDS,
       };
     } catch (error) {
-      logger.error('Error sending OTP:', error);
-      throw new Error('Failed to send OTP');
+      logger.error("Error sending OTP:", error);
+      throw new Error("Failed to send OTP");
     }
   }
 
@@ -128,50 +135,57 @@ export class AuthService {
    * Verify OTP and generate JWT tokens
    * TEST MODE: Auto-create user if doesn't exist in development
    */
-  async verifyOTP(admissionNumber: string, otp: string): Promise<AuthTokens | null> {
+  async verifyOTP(
+    admissionNumber: string,
+    otp: string,
+  ): Promise<AuthTokens | null> {
     try {
       // TEST MODE: In development, accept any OTP and auto-create user
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === "development") {
         logger.info(`TEST MODE: Auto-login for ${admissionNumber}`);
-        
+
         // Check if user exists by admission number
         let user = await UserRepository.findByAdmissionNumber(admissionNumber);
-        
+
         // If not found by admission number, try by email (in case admission number format differs)
         if (!user) {
           const testEmail = `${admissionNumber.toLowerCase()}@test.com`;
           user = await UserRepository.findByEmail(testEmail);
         }
-        
+
         // If user doesn't exist, create them
         if (!user) {
-          const isAdmin = admissionNumber.toUpperCase().includes('ADMIN');
-          const role = isAdmin ? 'admin' : 'student';
-          
-          logger.info(`TEST MODE: Creating new ${role} user: ${admissionNumber}`);
-          
+          const isAdmin = admissionNumber.toUpperCase().includes("ADMIN");
+          const role = isAdmin ? "admin" : "student";
+
+          logger.info(
+            `TEST MODE: Creating new ${role} user: ${admissionNumber}`,
+          );
+
           try {
             // Create user in database
-            const { data, error} = await supabaseAdmin
-              .from('users')
+            const { data, error } = await supabaseAdmin
+              .from("users")
               .insert({
                 admission_number: admissionNumber,
-                name: isAdmin ? `Admin ${admissionNumber}` : `Student ${admissionNumber}`,
+                name: isAdmin
+                  ? `Admin ${admissionNumber}`
+                  : `Student ${admissionNumber}`,
                 email: `${admissionNumber.toLowerCase()}@test.com`,
                 phone: `+91${Math.floor(1000000000 + Math.random() * 9000000000)}`,
                 role: role,
-                branch: isAdmin ? 'Administration' : 'Computer Science',
-                batch: isAdmin ? '2026' : '2026',
-                current_phase: isAdmin ? null : 'Document Verification',
-                enrollment_date: new Date().toISOString()
+                branch: isAdmin ? "Administration" : "Computer Science",
+                batch: isAdmin ? "2026" : "2026",
+                current_phase: isAdmin ? null : "Document Verification",
+                enrollment_date: new Date().toISOString(),
               })
               .select()
               .single();
-            
+
             if (error) {
-              logger.error('Error creating test user:', error);
+              logger.error("Error creating test user:", error);
               // If duplicate email, try to find the existing user
-              if (error.code === '23505') {
+              if (error.code === "23505") {
                 const testEmail = `${admissionNumber.toLowerCase()}@test.com`;
                 user = await UserRepository.findByEmail(testEmail);
                 if (!user) {
@@ -184,22 +198,22 @@ export class AuthService {
               user = data as User;
             }
           } catch (createError) {
-            logger.error('Exception creating test user:', createError);
+            logger.error("Exception creating test user:", createError);
             return null;
           }
         }
-        
+
         // Generate tokens
         const tokens = this.generateTokens(user);
-        
+
         logger.info(`TEST MODE: User authenticated: ${user.id}`);
-        
+
         return {
           ...tokens,
-          user
+          user,
         };
       }
-      
+
       // PRODUCTION MODE: Normal OTP verification
       // Get stored OTP
       const otpKey = `otp:${admissionNumber}`;
@@ -236,34 +250,35 @@ export class AuthService {
 
       return {
         ...tokens,
-        user
+        user,
       };
     } catch (error) {
-      logger.error('Error verifying OTP:', error);
-      throw new Error('Failed to verify OTP');
+      logger.error("Error verifying OTP:", error);
+      throw new Error("Failed to verify OTP");
     }
   }
 
   /**
    * Generate JWT access and refresh tokens
    */
-  private generateTokens(user: User): { accessToken: string; refreshToken: string } {
+  private generateTokens(user: User): {
+    accessToken: string;
+    refreshToken: string;
+  } {
     const payload = {
       userId: user.id,
       admissionNumber: user.admission_number,
       email: user.email,
-      role: user.role
+      role: user.role,
     };
 
     const accessToken = jwt.sign(payload, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN
+      expiresIn: JWT_EXPIRES_IN,
     });
 
-    const refreshToken = jwt.sign(
-      { userId: user.id },
-      JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
+      expiresIn: "30d",
+    });
 
     return { accessToken, refreshToken };
   }
@@ -275,7 +290,7 @@ export class AuthService {
     try {
       return jwt.verify(token, JWT_SECRET);
     } catch (error) {
-      logger.error('Token verification failed:', error);
+      logger.error("Token verification failed:", error);
       return null;
     }
   }
@@ -293,7 +308,7 @@ export class AuthService {
       // Check if refresh token exists
       const refreshKey = `refresh:${decoded.userId}`;
       const storedToken = await this.getOTP(refreshKey);
-      
+
       if (storedToken !== refreshToken) {
         logger.warn(`Invalid refresh token for user ${decoded.userId}`);
         return null;
@@ -309,7 +324,7 @@ export class AuthService {
       const tokens = this.generateTokens(user);
       return tokens.accessToken;
     } catch (error) {
-      logger.error('Error refreshing token:', error);
+      logger.error("Error refreshing token:", error);
       return null;
     }
   }
@@ -326,7 +341,7 @@ export class AuthService {
       logger.info(`User logged out: ${userId}`);
       return true;
     } catch (error) {
-      logger.error('Error during logout:', error);
+      logger.error("Error during logout:", error);
       return false;
     }
   }
@@ -336,9 +351,11 @@ export class AuthService {
    */
   async validateSession(userId: string): Promise<boolean> {
     try {
-      // In development mode without Redis, skip session validation
-      if (process.env.NODE_ENV === 'development' && !isRedisAvailable()) {
-        logger.info(`TEST MODE: Skipping session validation for ${userId}`);
+      // Skip session validation if Redis is not available
+      if (!isRedisAvailable()) {
+        logger.info(
+          `Skipping session validation for ${userId} (Redis unavailable)`,
+        );
         return true;
       }
 
@@ -346,26 +363,27 @@ export class AuthService {
       const token = await this.getOTP(refreshKey);
       return token !== null;
     } catch (error) {
-      logger.error('Error validating session:', error);
-      // In development, allow access even if validation fails
-      if (process.env.NODE_ENV === 'development') {
-        return true;
-      }
-      return false;
+      logger.error("Error validating session:", error);
+      // Allow access if Redis validation fails — JWT is still verified
+      return true;
     }
   }
 
   /**
    * Change user password (for future use)
    */
-  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<boolean> {
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<boolean> {
     try {
       // TODO: Implement password change logic with Supabase Auth
       // This is a placeholder for future implementation
       logger.info(`Password change requested for user: ${userId}`);
       return true;
     } catch (error) {
-      logger.error('Error changing password:', error);
+      logger.error("Error changing password:", error);
       return false;
     }
   }

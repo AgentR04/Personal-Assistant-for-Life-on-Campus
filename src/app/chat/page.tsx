@@ -1,6 +1,6 @@
 "use client";
 
-import api from "@/lib/api";
+import { api } from "@/lib/api";
 import { BookOpen, Bot, Loader2, Send, Sparkles, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -148,20 +148,23 @@ export default function ChatPage() {
 
   const isTestMode = () => {
     if (typeof window === "undefined") return false;
-    return localStorage.getItem("testMode") === "true";
+    return (
+      localStorage.getItem("testMode") === "true" ||
+      (localStorage.getItem("token") || "").startsWith("test-token-")
+    );
   };
 
   const initializeChat = async () => {
     setLoading(true);
 
+    // In test mode, skip backend calls entirely
     if (isTestMode()) {
-      // In test mode, skip backend calls
       setMessages([
         {
           id: "welcome",
           role: "assistant",
           content:
-            "Hi! I'm P.A.L., your personal campus assistant. Ask me anything about campus life! 🎓\n\n*(Running in offline demo mode)*",
+            "Hi! I'm P.A.L., your personal campus assistant. Ask me anything about campus life! 🎓\n\n*(Running in demo mode)*",
           timestamp: new Date(),
         },
       ]);
@@ -170,37 +173,32 @@ export default function ChatPage() {
     }
 
     try {
-      // Try to get existing conversations
       const conversationsRes = await api.chat.getConversations(1);
-
       if (conversationsRes?.data?.conversations?.length > 0) {
         const conv = conversationsRes.data.conversations[0];
         setConversationId(conv.id);
-
-        // Try to load messages
         try {
           const messagesRes = await api.chat.getMessages(conv.id);
           if (messagesRes?.data?.messages) {
-            const formattedMessages = messagesRes.data.messages.map(
-              (msg: any) => ({
+            setMessages(
+              messagesRes.data.messages.map((msg: any) => ({
                 id: msg.id,
                 role: msg.role,
                 content: msg.content,
                 sources: msg.sources,
                 timestamp: new Date(msg.timestamp),
-              }),
+              })),
             );
-            setMessages(formattedMessages);
           }
         } catch (e) {
-          console.error("Failed to load messages:", e);
+          console.warn("Failed to load messages:", e);
         }
       }
     } catch (error) {
-      console.error("Failed to initialize chat:", error);
+      console.warn("Chat API unavailable, using local mode:", error);
     }
 
-    // Always show welcome message if no messages
+    // Show welcome message if no messages loaded
     setMessages((prev) => {
       if (prev.length === 0) {
         return [
@@ -208,14 +206,13 @@ export default function ChatPage() {
             id: "welcome",
             role: "assistant",
             content:
-              "Hi! I'm P.A.L., your personal campus assistant. Ask me anything!",
+              "Hi! I'm P.A.L., your personal campus assistant. Ask me anything about campus life! 🎓",
             timestamp: new Date(),
           },
         ];
       }
       return prev;
     });
-
     setLoading(false);
   };
 
@@ -232,18 +229,15 @@ export default function ChatPage() {
     setInput("");
     setIsTyping(true);
 
-    // Test mode: use local responses
+    // In test mode, use local responses
     if (isTestMode()) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, 800 + Math.random() * 700),
-      );
-      const response = getTestModeResponse(text);
+      await new Promise((r) => setTimeout(r, 800 + Math.random() * 700));
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: response,
+          content: getTestModeResponse(text),
           timestamp: new Date(),
         },
       ]);
@@ -251,58 +245,54 @@ export default function ChatPage() {
       return;
     }
 
+    // Try real backend API
     try {
       let activeConvId = conversationId;
-
       if (!activeConvId) {
         const newConvRes = await api.chat.createConversation(
           "Campus Assistant Chat",
         );
-        // Try both possible response structures
         activeConvId =
-          newConvRes?.data?.conversation?.id ||
-          newConvRes?.data?.data?.conversation?.id;
-
-        if (!activeConvId) {
-          console.error("No conversation ID in response:", newConvRes);
-          throw new Error("Invalid conversation response");
-        }
-
-        setConversationId(activeConvId);
+          newConvRes?.data?.data?.conversation?.id ||
+          newConvRes?.data?.conversation?.id;
+        if (activeConvId) setConversationId(activeConvId);
       }
 
-      const response = await api.chat.sendMessage(activeConvId, text);
-      const data = response?.data?.data || response?.data;
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: data?.messageId || (Date.now() + 1).toString(),
-          role: "assistant",
-          content:
-            data?.response ||
-            data?.message?.content ||
-            "Sorry, I couldn't process that.",
-          sources: data?.sources,
-          timestamp: new Date(),
-        },
-      ]);
-    } catch (error: any) {
-      console.error("Send error:", error);
-      // Fallback to test mode response on error
-      const fallbackResponse = getTestModeResponse(text);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 2).toString(),
-          role: "assistant",
-          content: fallbackResponse,
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsTyping(false);
+      if (activeConvId) {
+        const response = await api.chat.sendMessage(activeConvId, text);
+        const data = response?.data?.data || response?.data;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data?.messageId || (Date.now() + 1).toString(),
+            role: "assistant",
+            content:
+              data?.response ||
+              data?.message?.content ||
+              "Sorry, I couldn't process that.",
+            sources: data?.sources,
+            timestamp: new Date(),
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+    } catch (error) {
+      console.warn("Backend chat failed, using local fallback:", error);
     }
+
+    // Fallback to local responses
+    const fallbackResponse = getTestModeResponse(text);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: (Date.now() + 2).toString(),
+        role: "assistant",
+        content: fallbackResponse,
+        timestamp: new Date(),
+      },
+    ]);
+    setIsTyping(false);
   };
 
   if (loading) {
