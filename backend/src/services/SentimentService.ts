@@ -68,6 +68,12 @@ class SentimentService {
    * Analyze sentiment using Gemini
    */
   private async analyzeWithGemini(text: string): Promise<SentimentAnalysis> {
+    // Skip Gemini call if no API key is configured
+    if (!process.env.GOOGLE_API_KEY) {
+      logger.info("Skipping Gemini sentiment analysis (no API key)");
+      return this.getNeutralSentiment();
+    }
+
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
