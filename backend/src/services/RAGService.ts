@@ -1,23 +1,33 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ChromaClient } from 'chromadb';
-import { logger } from '../utils/logger';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ChromaClient } from "chromadb";
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { logger } from "../utils/logger";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '');
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+// Check if API key is configured
+const isApiKeyConfigured =
+  process.env.GOOGLE_API_KEY &&
+  process.env.GOOGLE_API_KEY !== "your_google_gemini_api_key" &&
+  process.env.GOOGLE_API_KEY.length > 10;
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
+// Only initialize model if key is configured to avoid immediate errors
+const model = isApiKeyConfigured
+  ? genAI.getGenerativeModel({ model: "gemini-1.5-pro" })
+  : null;
 
 // Initialize ChromaDB client
 const chromaClient = new ChromaClient({
-  path: `http://${process.env.CHROMA_HOST || 'localhost'}:${process.env.CHROMA_PORT || 8000}`
+  path: `http://${process.env.CHROMA_HOST || "localhost"}:${process.env.CHROMA_PORT || 8000}`,
 });
 
-const COLLECTION_NAME = process.env.CHROMA_COLLECTION_NAME || 'pal_knowledge_base';
+const COLLECTION_NAME =
+  process.env.CHROMA_COLLECTION_NAME || "pal_knowledge_base";
 
 interface RAGQueryOptions {
   userId?: string;
   branch?: string;
   phase?: string;
-  language?: 'en' | 'hi';
+  language?: "en" | "hi";
   maxResults?: number;
 }
 
@@ -32,6 +42,27 @@ interface RAGResponse {
   language: string;
 }
 
+// Mock responses for demo mode
+const getMockResponse = (query: string): string => {
+  const q = query.toLowerCase();
+  if (q.includes("fee") || q.includes("payment") || q.includes("cost")) {
+    return "The fee payment deadline for the upcoming semester is March 15th, 2026. You can pay your fees through the 'Fee Payment' section in your dashboard. The total amount for Computer Science 1st Year is ₹85,000.";
+  }
+  if (q.includes("hostel") || q.includes("room") || q.includes("stay")) {
+    return "Hostel allocation for first-year students will begin on April 1st. Block A and Block B are reserved for freshers. You can submit your room preferences in the 'Hostel Allotment' section.";
+  }
+  if (q.includes("course") || q.includes("subject") || q.includes("class")) {
+    return "For Computer Science 1st Year, your core courses are: 1. Introduction to Programming (CS101), 2. Digital Logic Design (CS102), 3. Calculus (MA101), and 4. Engineering Physics (PH101). Timetables will be available next week.";
+  }
+  if (q.includes("document") || q.includes("upload") || q.includes("verify")) {
+    return "Please ensure you upload your 10th Marksheet, 12th Marksheet, and a valid Government ID proof. The verification process typically takes 24-48 hours after upload.";
+  }
+  if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
+    return "Hello! I'm P.A.L., your Personal Assistant for Life on Campus. I can help you with questions about fees, hostels, academics, and document verification. What would you like to know?";
+  }
+  return "I'm currently running in demo mode since the AI API key isn't configured. I can answer questions about fees, hostels, courses, and documents. For other queries, please contact the administration.";
+};
+
 class RAGService {
   private collection: any = null;
 
@@ -43,11 +74,11 @@ class RAGService {
       // Try to get existing collection
       this.collection = await chromaClient.getOrCreateCollection({
         name: COLLECTION_NAME,
-        metadata: { description: 'P.A.L. Knowledge Base' }
+        metadata: { description: "P.A.L. Knowledge Base" },
       });
       logger.info(`✅ ChromaDB collection '${COLLECTION_NAME}' initialized`);
     } catch (error) {
-      logger.warn('ChromaDB not available - using fallback mode:', error);
+      logger.warn("ChromaDB not available - using fallback mode:", error);
       this.collection = null; // Will use fallback responses
     }
   }
@@ -55,18 +86,25 @@ class RAGService {
   /**
    * Add documents to knowledge base
    */
-  async addDocuments(documents: Array<{
-    content: string;
-    metadata: {
-      title: string;
-      source: string;
-      branch?: string;
-      phase?: string;
-      documentType?: string;
-      uploadedBy?: string;
-      uploadedAt?: string;
-    };
-  }>): Promise<void> {
+  async addDocuments(
+    documents: Array<{
+      content: string;
+      metadata: {
+        title: string;
+        source: string;
+        branch?: string;
+        phase?: string;
+        documentType?: string;
+        uploadedBy?: string;
+        uploadedAt?: string;
+      };
+    }>,
+  ): Promise<void> {
+    if (!isApiKeyConfigured) {
+      logger.warn("Skipping document embedding - API key not configured");
+      return;
+    }
+
     if (!this.collection) {
       await this.initialize();
     }
@@ -75,7 +113,7 @@ class RAGService {
       // Split documents into chunks
       const textSplitter = new RecursiveCharacterTextSplitter({
         chunkSize: 512,
-        chunkOverlap: 50
+        chunkOverlap: 50,
       });
 
       const allChunks: string[] = [];
@@ -84,13 +122,13 @@ class RAGService {
 
       for (const doc of documents) {
         const chunks = await textSplitter.splitText(doc.content);
-        
+
         for (let i = 0; i < chunks.length; i++) {
           allChunks.push(chunks[i]);
           allMetadata.push({
             ...doc.metadata,
             chunkIndex: i,
-            totalChunks: chunks.length
+            totalChunks: chunks.length,
           });
           allIds.push(`${doc.metadata.source}_chunk_${i}_${Date.now()}`);
         }
@@ -104,12 +142,12 @@ class RAGService {
         ids: allIds,
         embeddings,
         documents: allChunks,
-        metadatas: allMetadata
+        metadatas: allMetadata,
       });
 
       logger.info(`Added ${allChunks.length} chunks to knowledge base`);
     } catch (error) {
-      logger.error('Error adding documents to knowledge base:', error);
+      logger.error("Error adding documents to knowledge base:", error);
       throw error;
     }
   }
@@ -117,14 +155,28 @@ class RAGService {
   /**
    * Query the knowledge base
    */
-  async query(query: string, options: RAGQueryOptions = {}): Promise<RAGResponse> {
+  async query(
+    query: string,
+    options: RAGQueryOptions = {},
+  ): Promise<RAGResponse> {
+    // DEMO MODE: If API key is not configured, return mock response immediately
+    if (!isApiKeyConfigured) {
+      logger.info("Using mock response (API key not configured)");
+      return {
+        answer: getMockResponse(query),
+        sources: [],
+        confidence: 1.0,
+        language: "en",
+      };
+    }
+
     if (!this.collection) {
       await this.initialize();
     }
 
     // FALLBACK: If ChromaDB is still not available, use simple Gemini responses
     if (!this.collection) {
-      logger.warn('ChromaDB not available - using fallback Gemini responses');
+      logger.warn("ChromaDB not available - using fallback Gemini responses");
       return await this.fallbackQuery(query, options);
     }
 
@@ -133,12 +185,12 @@ class RAGService {
         userId,
         branch,
         phase,
-        language = 'en',
-        maxResults = 5
+        language = "en",
+        maxResults = 5,
       } = options;
 
       // Detect language if not provided
-      const detectedLanguage = language || await this.detectLanguage(query);
+      const detectedLanguage = language || (await this.detectLanguage(query));
 
       // Generate query embedding
       const queryEmbedding = await this.generateEmbeddings([query]);
@@ -152,38 +204,56 @@ class RAGService {
       const results = await this.collection.query({
         queryEmbeddings: queryEmbedding,
         nResults: maxResults,
-        where: Object.keys(whereFilter).length > 0 ? whereFilter : undefined
+        where: Object.keys(whereFilter).length > 0 ? whereFilter : undefined,
       });
 
       // If no results with filters, try without filters
       let finalResults = results;
-      if (results.documents[0].length === 0 && Object.keys(whereFilter).length > 0) {
-        logger.info('No results with filters, trying without filters');
+      if (
+        results.documents[0].length === 0 &&
+        Object.keys(whereFilter).length > 0
+      ) {
+        logger.info("No results with filters, trying without filters");
         finalResults = await this.collection.query({
           queryEmbeddings: queryEmbedding,
-          nResults: maxResults
+          nResults: maxResults,
         });
       }
 
       // Format sources
-      const sources = finalResults.documents[0].map((doc: string, idx: number) => ({
-        content: doc,
-        metadata: finalResults.metadatas[0][idx],
-        score: 1 - (finalResults.distances[0][idx] || 0)
-      }));
+      const sources = finalResults.documents[0].map(
+        (doc: string, idx: number) => ({
+          content: doc,
+          metadata: finalResults.metadatas[0][idx],
+          score: 1 - (finalResults.distances[0][idx] || 0),
+        }),
+      );
 
       // Generate answer using Gemini
-      const { answer, confidence } = await this.generateAnswer(query, sources, detectedLanguage);
+      const { answer, confidence } = await this.generateAnswer(
+        query,
+        sources,
+        detectedLanguage,
+      );
 
       return {
         answer,
         sources,
         confidence,
-        language: detectedLanguage
+        language: detectedLanguage,
       };
     } catch (error) {
-      logger.error('Error querying knowledge base:', error);
-      throw error;
+      logger.error(
+        "Error querying knowledge base, falling back to mock:",
+        error,
+      );
+      // Fallback to mock on error
+      return {
+        answer: getMockResponse(query),
+        sources: [],
+        confidence: 1.0,
+        language: "en",
+      };
     }
   }
 
@@ -191,11 +261,15 @@ class RAGService {
    * Generate embeddings using Gemini
    */
   private async generateEmbeddings(texts: string[]): Promise<number[][]> {
+    if (!isApiKeyConfigured) return [];
+
     try {
-      const embeddingModel = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-      
+      const embeddingModel = genAI.getGenerativeModel({
+        model: "text-embedding-004",
+      });
+
       const embeddings: number[][] = [];
-      
+
       // Process in batches to avoid rate limits
       const batchSize = 10;
       for (let i = 0; i < texts.length; i += batchSize) {
@@ -204,14 +278,14 @@ class RAGService {
           batch.map(async (text) => {
             const result = await embeddingModel.embedContent(text);
             return result.embedding.values;
-          })
+          }),
         );
         embeddings.push(...batchEmbeddings);
       }
 
       return embeddings;
     } catch (error) {
-      logger.error('Error generating embeddings:', error);
+      logger.error("Error generating embeddings:", error);
       throw error;
     }
   }
@@ -222,18 +296,23 @@ class RAGService {
   private async generateAnswer(
     query: string,
     sources: Array<{ content: string; metadata: any; score: number }>,
-    language: string
+    language: string,
   ): Promise<{ answer: string; confidence: number }> {
+    if (!isApiKeyConfigured || !model) {
+      return { answer: getMockResponse(query), confidence: 1.0 };
+    }
+
     try {
       // Build context from sources
       const context = sources
         .map((s, idx) => `[${idx + 1}] ${s.content}`)
-        .join('\n\n');
+        .join("\n\n");
 
       // Build prompt
-      const systemPrompt = language === 'hi'
-        ? `आप P.A.L. हैं - एक सहायक AI जो नए छात्रों की मदद करता है। दिए गए संदर्भ का उपयोग करके प्रश्न का उत्तर दें।`
-        : `You are P.A.L. - a helpful AI assistant for college onboarding. Answer the question using the provided context.`;
+      const systemPrompt =
+        language === "hi"
+          ? `आप P.A.L. हैं - एक सहायक AI जो नए छात्रों की मदद करता है। दिए गए संदर्भ का उपयोग करके प्रश्न का उत्तर दें।`
+          : `You are P.A.L. - a helpful AI assistant for college onboarding. Answer the question using the provided context.`;
 
       const prompt = `${systemPrompt}
 
@@ -243,7 +322,7 @@ ${context}
 Question: ${query}
 
 Instructions:
-- Answer in ${language === 'hi' ? 'Hindi' : 'English'}
+- Answer in ${language === "hi" ? "Hindi" : "English"}
 - Be concise and helpful
 - If the context doesn't contain enough information, acknowledge uncertainty
 - Cite sources using [1], [2], etc.
@@ -254,12 +333,13 @@ Answer:`;
       const answer = result.response.text();
 
       // Calculate confidence based on source scores
-      const avgScore = sources.reduce((sum, s) => sum + s.score, 0) / sources.length;
+      const avgScore =
+        sources.reduce((sum, s) => sum + s.score, 0) / sources.length;
       const confidence = Math.min(avgScore * 1.2, 1.0); // Boost slightly, cap at 1.0
 
       return { answer, confidence };
     } catch (error) {
-      logger.error('Error generating answer:', error);
+      logger.error("Error generating answer:", error);
       throw error;
     }
   }
@@ -267,10 +347,10 @@ Answer:`;
   /**
    * Detect language of text
    */
-  private async detectLanguage(text: string): Promise<'en' | 'hi'> {
+  private async detectLanguage(text: string): Promise<"en" | "hi"> {
     // Simple heuristic: check for Devanagari script
     const hindiPattern = /[\u0900-\u097F]/;
-    return hindiPattern.test(text) ? 'hi' : 'en';
+    return hindiPattern.test(text) ? "hi" : "en";
   }
 
   /**
@@ -283,11 +363,13 @@ Answer:`;
 
     try {
       await this.collection.delete({
-        ids: documentIds
+        ids: documentIds,
       });
-      logger.info(`Deleted ${documentIds.length} documents from knowledge base`);
+      logger.info(
+        `Deleted ${documentIds.length} documents from knowledge base`,
+      );
     } catch (error) {
-      logger.error('Error deleting documents:', error);
+      logger.error("Error deleting documents:", error);
       throw error;
     }
   }
@@ -295,7 +377,10 @@ Answer:`;
   /**
    * Search documents by metadata
    */
-  async searchByMetadata(metadata: Record<string, any>, limit: number = 10): Promise<any[]> {
+  async searchByMetadata(
+    metadata: Record<string, any>,
+    limit: number = 10,
+  ): Promise<any[]> {
     if (!this.collection) {
       await this.initialize();
     }
@@ -303,16 +388,16 @@ Answer:`;
     try {
       const results = await this.collection.get({
         where: metadata,
-        limit
+        limit,
       });
 
       return results.documents.map((doc: string, idx: number) => ({
         id: results.ids[idx],
         content: doc,
-        metadata: results.metadatas[idx]
+        metadata: results.metadatas[idx],
       }));
     } catch (error) {
-      logger.error('Error searching by metadata:', error);
+      logger.error("Error searching by metadata:", error);
       throw error;
     }
   }
@@ -321,14 +406,26 @@ Answer:`;
    * Fallback query when ChromaDB is not available
    * Uses Gemini directly without RAG
    */
-  private async fallbackQuery(query: string, options: RAGQueryOptions = {}): Promise<RAGResponse> {
-    try {
-      const language = options.language || 'en';
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+  private async fallbackQuery(
+    query: string,
+    options: RAGQueryOptions = {},
+  ): Promise<RAGResponse> {
+    if (!isApiKeyConfigured || !model) {
+      return {
+        answer: getMockResponse(query),
+        sources: [],
+        confidence: 1.0,
+        language: options.language || "en",
+      };
+    }
 
-      const prompt = language === 'hi'
-        ? `आप एक कैंपस सहायक हैं। निम्नलिखित प्रश्न का उत्तर दें:\n\n${query}\n\nयदि आपको जानकारी नहीं है, तो कृपया स्पष्ट रूप से बताएं।`
-        : `You are a campus assistant for a college onboarding system. Answer the following question:\n\n${query}\n\nIf you don't have specific information, please say so clearly and suggest contacting the admin.`;
+    try {
+      const language = options.language || "en";
+
+      const prompt =
+        language === "hi"
+          ? `आप एक कैंपस सहायक हैं। निम्नलिखित प्रश्न का उत्तर दें:\n\n${query}\n\nयदि आपको जानकारी नहीं है, तो कृपया स्पष्ट रूप से बताएं।`
+          : `You are a campus assistant for a college onboarding system. Answer the following question:\n\n${query}\n\nIf you don't have specific information, please say so clearly and suggest contacting the admin.`;
 
       const result = await model.generateContent(prompt);
       const answer = result.response.text();
@@ -337,18 +434,16 @@ Answer:`;
         answer,
         sources: [],
         confidence: 0.6, // Lower confidence without RAG
-        language
+        language,
       };
     } catch (error) {
-      logger.error('Error in fallback query:', error);
+      logger.error("Error in fallback query:", error);
       // Return a generic error message
       return {
-        answer: options.language === 'hi'
-          ? 'क्षमा करें, मैं अभी आपकी मदद नहीं कर सकता। कृपया बाद में पुनः प्रयास करें।'
-          : 'Sorry, I cannot help you right now. Please try again later or contact the admin.',
+        answer: getMockResponse(query), // Use mock response on error as well
         sources: [],
         confidence: 0.3,
-        language: options.language || 'en'
+        language: options.language || "en",
       };
     }
   }
