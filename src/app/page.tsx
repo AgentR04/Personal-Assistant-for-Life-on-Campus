@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   MessageCircle,
   FileCheck,
@@ -69,7 +70,24 @@ export default function Home() {
             {" "}for Campus Life
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          <div className="mx-auto mt-8 flex justify-center">
+            <Image 
+              src="/pal-logo-light.svg"
+              alt="P.A.L. Logo"
+              width={200}
+              height={200}
+              className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48 dark:hidden"
+            />
+            <Image 
+              src="/pal-logo-dark.svg"
+              alt="P.A.L. Logo"
+              width={200}
+              height={200}
+              className="h-32 w-32 sm:h-40 sm:w-40 lg:h-48 lg:w-48 hidden dark:inline"
+            />
+          </div>
+
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
             P.A.L. transforms chaotic college onboarding into a seamless,
             proactive journey. Smart document scanning, personalized guidance,
             and social matching — all in one intelligent assistant.
@@ -219,9 +237,20 @@ export default function Home() {
       <footer className="border-t border-border/50 px-6 py-10">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-              <Bot className="h-4 w-4 text-background" />
-            </div>
+            <Image 
+              src="/pal-logo-light.svg"
+              alt="P.A.L. Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 dark:hidden"
+            />
+            <Image 
+              src="/pal-logo-dark.svg"
+              alt="P.A.L. Logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 hidden dark:inline"
+            />
             <span className="text-sm font-semibold">P.A.L.</span>
           </div>
           <p className="text-sm text-muted-foreground">

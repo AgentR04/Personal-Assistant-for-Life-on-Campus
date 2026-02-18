@@ -1,0 +1,20 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Person 1 (left) -->
+  <circle cx="65" cy="45" r="18" stroke="white" stroke-width="4" fill="none"/>
+  <path d="M 45 75 Q 45 63 55 63 L 75 63 Q 85 63 85 75 L 85 95" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Letter P inside person 1 -->
+  <path d="M 58 70 L 58 88 M 58 70 L 65 70 Q 70 70 70 75 Q 70 80 65 80 L 58 80" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Person 2 (right) with graduation cap -->
+  <circle cx="135" cy="55" r="18" stroke="white" stroke-width="4" fill="none"/>
+  <path d="M 115 85 Q 115 73 125 73 L 145 73 Q 155 73 155 85 L 155 105" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <!-- Graduation cap -->
+  <path d="M 105 35 L 135 25 L 165 35 L 135 45 Z" stroke="white" stroke-width="4" fill="none" stroke-linejoin="round"/>
+  <line x1="135" y1="45" x2="135" y2="55" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="165" y1="35" x2="170" y2="50" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- P.A.L text -->
+  <text x="100" y="145" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">P.A.L</text>
+</svg>

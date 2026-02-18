@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
@@ -95,10 +96,14 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground">
-            <Bot className="h-5 w-5 text-background" />
-          </div>
+        <Link href="/" className="flex items-center gap-3">
+          <Image 
+            src={theme === "dark" ? "/pal-logo-dark.svg" : "/pal-logo-light.svg"}
+            alt="P.A.L. Logo"
+            width={56}
+            height={56}
+            className="h-14 w-14"
+          />
           <span className="text-lg font-bold tracking-tight">P.A.L.</span>
         </Link>
 
