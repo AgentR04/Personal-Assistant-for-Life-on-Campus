@@ -45,6 +45,7 @@ app.use(
         process.env.FRONTEND_URL,
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://personal-assistant-for-life-on-camp.vercel.app",
       ].filter(Boolean) as string[];
 
       if (!origin || allowedOrigins.includes(origin)) {
