@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# orchids (not needed for deployment)
+.orchids/
+
 # testing
 /coverage
 
