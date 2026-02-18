@@ -3,17 +3,8 @@ import { ChromaClient } from "chromadb";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { logger } from "../utils/logger";
 
-// Check if API key is configured
-const isApiKeyConfigured =
-  process.env.GOOGLE_API_KEY &&
-  process.env.GOOGLE_API_KEY !== "your_google_gemini_api_key" &&
-  process.env.GOOGLE_API_KEY.length > 10;
-
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-// Only initialize model if key is configured to avoid immediate errors
-const model = isApiKeyConfigured
-  ? genAI.getGenerativeModel({ model: "gemini-1.5-pro" })
-  : null;
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 // Initialize ChromaDB client
 const chromaClient = new ChromaClient({
@@ -41,27 +32,6 @@ interface RAGResponse {
   confidence: number;
   language: string;
 }
-
-// Mock responses for demo mode
-const getMockResponse = (query: string): string => {
-  const q = query.toLowerCase();
-  if (q.includes("fee") || q.includes("payment") || q.includes("cost")) {
-    return "The fee payment deadline for the upcoming semester is March 15th, 2026. You can pay your fees through the 'Fee Payment' section in your dashboard. The total amount for Computer Science 1st Year is ₹85,000.";
-  }
-  if (q.includes("hostel") || q.includes("room") || q.includes("stay")) {
-    return "Hostel allocation for first-year students will begin on April 1st. Block A and Block B are reserved for freshers. You can submit your room preferences in the 'Hostel Allotment' section.";
-  }
-  if (q.includes("course") || q.includes("subject") || q.includes("class")) {
-    return "For Computer Science 1st Year, your core courses are: 1. Introduction to Programming (CS101), 2. Digital Logic Design (CS102), 3. Calculus (MA101), and 4. Engineering Physics (PH101). Timetables will be available next week.";
-  }
-  if (q.includes("document") || q.includes("upload") || q.includes("verify")) {
-    return "Please ensure you upload your 10th Marksheet, 12th Marksheet, and a valid Government ID proof. The verification process typically takes 24-48 hours after upload.";
-  }
-  if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
-    return "Hello! I'm P.A.L., your Personal Assistant for Life on Campus. I can help you with questions about fees, hostels, academics, and document verification. What would you like to know?";
-  }
-  return "I'm currently running in demo mode since the AI API key isn't configured. I can answer questions about fees, hostels, courses, and documents. For other queries, please contact the administration.";
-};
 
 class RAGService {
   private collection: any = null;
@@ -100,11 +70,6 @@ class RAGService {
       };
     }>,
   ): Promise<void> {
-    if (!isApiKeyConfigured) {
-      logger.warn("Skipping document embedding - API key not configured");
-      return;
-    }
-
     if (!this.collection) {
       await this.initialize();
     }
@@ -159,17 +124,6 @@ class RAGService {
     query: string,
     options: RAGQueryOptions = {},
   ): Promise<RAGResponse> {
-    // DEMO MODE: If API key is not configured, return mock response immediately
-    if (!isApiKeyConfigured) {
-      logger.info("Using mock response (API key not configured)");
-      return {
-        answer: getMockResponse(query),
-        sources: [],
-        confidence: 1.0,
-        language: "en",
-      };
-    }
-
     if (!this.collection) {
       await this.initialize();
     }
@@ -243,17 +197,8 @@ class RAGService {
         language: detectedLanguage,
       };
     } catch (error) {
-      logger.error(
-        "Error querying knowledge base, falling back to mock:",
-        error,
-      );
-      // Fallback to mock on error
-      return {
-        answer: getMockResponse(query),
-        sources: [],
-        confidence: 1.0,
-        language: "en",
-      };
+      logger.error("Error querying knowledge base:", error);
+      throw error;
     }
   }
 
@@ -261,8 +206,6 @@ class RAGService {
    * Generate embeddings using Gemini
    */
   private async generateEmbeddings(texts: string[]): Promise<number[][]> {
-    if (!isApiKeyConfigured) return [];
-
     try {
       const embeddingModel = genAI.getGenerativeModel({
         model: "text-embedding-004",
@@ -298,10 +241,6 @@ class RAGService {
     sources: Array<{ content: string; metadata: any; score: number }>,
     language: string,
   ): Promise<{ answer: string; confidence: number }> {
-    if (!isApiKeyConfigured || !model) {
-      return { answer: getMockResponse(query), confidence: 1.0 };
-    }
-
     try {
       // Build context from sources
       const context = sources
@@ -410,17 +349,9 @@ Answer:`;
     query: string,
     options: RAGQueryOptions = {},
   ): Promise<RAGResponse> {
-    if (!isApiKeyConfigured || !model) {
-      return {
-        answer: getMockResponse(query),
-        sources: [],
-        confidence: 1.0,
-        language: options.language || "en",
-      };
-    }
-
     try {
       const language = options.language || "en";
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
       const prompt =
         language === "hi"
@@ -440,7 +371,10 @@ Answer:`;
       logger.error("Error in fallback query:", error);
       // Return a generic error message
       return {
-        answer: getMockResponse(query), // Use mock response on error as well
+        answer:
+          options.language === "hi"
+            ? "क्षमा करें, मैं अभी आपकी मदद नहीं कर सकता। कृपया बाद में पुनः प्रयास करें।"
+            : "Sorry, I cannot help you right now. Please try again later or contact the admin.",
         sources: [],
         confidence: 0.3,
         language: options.language || "en",
