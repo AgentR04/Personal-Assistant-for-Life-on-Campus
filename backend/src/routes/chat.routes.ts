@@ -1,107 +1,208 @@
-import { Router, Request, Response } from 'express';
-import { authenticate } from '../middleware/auth';
-import ChatService from '../services/ChatService';
-import { logger } from '../utils/logger';
+import { Request, Response, Router } from "express";
+import { supabaseAdmin } from "../config/database";
+import { authenticate } from "../middleware/auth";
+import ChatService from "../services/ChatService";
+import { logger } from "../utils/logger";
 
 const router = Router();
+
+/**
+ * GET /api/v1/chat/profile
+ * Check if user has completed onboarding profile
+ */
+router.get("/profile", authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    const { data: user, error } = await supabaseAdmin
+      .from("users")
+      .select("id, name, branch, batch, hostel_block, onboarding_data")
+      .eq("id", userId)
+      .single();
+
+    if (error || !user) {
+      return res.json({
+        success: true,
+        data: { profileComplete: false, profile: null },
+      });
+    }
+
+    // Profile is complete if onboarding_data exists
+    const profileComplete = !!(
+      user.onboarding_data && Object.keys(user.onboarding_data).length > 0
+    );
+
+    res.json({
+      success: true,
+      data: {
+        profileComplete,
+        profile: user.onboarding_data || null,
+      },
+    });
+  } catch (error: any) {
+    logger.error("Error getting profile:", error);
+    res.status(500).json({ success: false, error: "Failed to get profile" });
+  }
+});
+
+/**
+ * POST /api/v1/chat/profile
+ * Save onboarding profile data
+ */
+router.post("/profile", authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const { name, collegeName, branch, year, hostelResident, interests } =
+      req.body;
+
+    const onboardingData = {
+      name,
+      collegeName,
+      branch,
+      year,
+      hostelResident,
+      interests,
+      completedAt: new Date().toISOString(),
+    };
+
+    // Update user record with onboarding data
+    const { error } = await supabaseAdmin
+      .from("users")
+      .update({
+        name: name || undefined,
+        branch: branch || undefined,
+        onboarding_data: onboardingData,
+      })
+      .eq("id", userId);
+
+    if (error) {
+      logger.error("Error saving onboarding data:", error);
+      // Still return success — the data might not fit the schema
+      // but we don't want to block the chat
+    }
+
+    res.json({
+      success: true,
+      data: { profile: onboardingData },
+    });
+  } catch (error: any) {
+    logger.error("Error saving profile:", error);
+    res.status(500).json({ success: false, error: "Failed to save profile" });
+  }
+});
 
 /**
  * POST /api/v1/chat/conversations
  * Create a new conversation
  */
-router.post('/conversations', authenticate, async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-    const { title } = req.body;
+router.post(
+  "/conversations",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+      const { title } = req.body;
 
-    const conversation = await ChatService.createConversation(userId, title);
+      const conversation = await ChatService.createConversation(userId, title);
 
-    res.status(201).json({
-      success: true,
-      data: {
-        conversation: conversation
-      }
-    });
-  } catch (error: any) {
-    logger.error('Error creating conversation:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to create conversation'
-    });
-  }
-});
+      res.status(201).json({
+        success: true,
+        data: {
+          conversation: conversation,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error creating conversation:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to create conversation",
+      });
+    }
+  },
+);
 
 /**
  * GET /api/v1/chat/conversations
  * Get user conversations
  */
-router.get('/conversations', authenticate, async (req: Request, res: Response) => {
-  try {
-    const userId = req.user!.userId;
-    const limitParam = req.query.limit;
-    const limit = limitParam ? parseInt(limitParam as string) : 20;
+router.get(
+  "/conversations",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.userId;
+      const limitParam = req.query.limit;
+      const limit = limitParam ? parseInt(limitParam as string) : 20;
 
-    const conversations = await ChatService.getUserConversations(userId, limit);
+      const conversations = await ChatService.getUserConversations(
+        userId,
+        limit,
+      );
 
-    res.json({
-      success: true,
-      data: {
-        conversations: conversations
-      }
-    });
-  } catch (error: any) {
-    logger.error('Error getting conversations:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get conversations'
-    });
-  }
-});
+      res.json({
+        success: true,
+        data: {
+          conversations: conversations,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error getting conversations:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get conversations",
+      });
+    }
+  },
+);
 
 /**
  * GET /api/v1/chat/conversations/:id
  * Get a specific conversation
  */
-router.get('/conversations/:id', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user!.userId;
+router.get(
+  "/conversations/:id",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.userId;
 
-    const conversation = await ChatService.getConversation(id as string);
+      const conversation = await ChatService.getConversation(id as string);
 
-    if (!conversation) {
-      return res.status(404).json({
+      if (!conversation) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation not found",
+        });
+      }
+
+      // Check ownership
+      if (conversation.user_id !== userId && req.user!.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: conversation,
+      });
+    } catch (error: any) {
+      logger.error("Error getting conversation:", error);
+      res.status(500).json({
         success: false,
-        error: 'Conversation not found'
+        error: "Failed to get conversation",
       });
     }
-
-    // Check ownership
-    if (conversation.user_id !== userId && req.user!.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: conversation
-    });
-  } catch (error: any) {
-    logger.error('Error getting conversation:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get conversation'
-    });
-  }
-});
+  },
+);
 
 /**
  * POST /api/v1/chat/message
  * Send a message and get AI response
  */
-router.post('/message', authenticate, async (req: Request, res: Response) => {
+router.post("/message", authenticate, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
     const { conversationId, content, branch, phase } = req.body;
@@ -109,30 +210,47 @@ router.post('/message', authenticate, async (req: Request, res: Response) => {
     if (!conversationId || !content) {
       return res.status(400).json({
         success: false,
-        error: 'conversationId and content are required'
+        error: "conversationId and content are required",
       });
     }
 
     // Verify conversation ownership
-    const conversation = await ChatService.getConversation(conversationId as string);
+    const conversation = await ChatService.getConversation(
+      conversationId as string,
+    );
     if (!conversation) {
       return res.status(404).json({
         success: false,
-        error: 'Conversation not found'
+        error: "Conversation not found",
       });
     }
 
     if (conversation.user_id !== userId) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied'
+        error: "Access denied",
       });
     }
 
-    const response = await ChatService.sendMessage(userId, conversationId, content, {
-      branch,
-      phase
-    });
+    // Fetch user's onboarding profile for personalized responses
+    const { data: userData } = await supabaseAdmin
+      .from("users")
+      .select("onboarding_data, branch")
+      .eq("id", userId)
+      .single();
+
+    const studentProfile = userData?.onboarding_data || undefined;
+
+    const response = await ChatService.sendMessage(
+      userId,
+      conversationId,
+      content,
+      {
+        branch: branch || userData?.branch,
+        phase,
+        studentProfile,
+      },
+    );
 
     res.json({
       success: true,
@@ -141,14 +259,14 @@ router.post('/message', authenticate, async (req: Request, res: Response) => {
         response: response.message.content,
         message: response.message,
         sources: response.sources,
-        confidence: response.confidence
-      }
+        confidence: response.confidence,
+      },
     });
   } catch (error: any) {
-    logger.error('Error sending message:', error);
+    logger.error("Error sending message:", error);
     res.status(500).json({
       success: false,
-      error: 'Failed to send message'
+      error: "Failed to send message",
     });
   }
 });
@@ -157,84 +275,92 @@ router.post('/message', authenticate, async (req: Request, res: Response) => {
  * GET /api/v1/chat/conversations/:id/messages
  * Get conversation messages
  */
-router.get('/conversations/:id/messages', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user!.userId;
-    const limitParam = req.query.limit;
-    const limit = limitParam ? parseInt(limitParam as string) : 50;
+router.get(
+  "/conversations/:id/messages",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.userId;
+      const limitParam = req.query.limit;
+      const limit = limitParam ? parseInt(limitParam as string) : 50;
 
-    // Verify conversation ownership
-    const conversation = await ChatService.getConversation(id as string);
-    if (!conversation) {
-      return res.status(404).json({
-        success: false,
-        error: 'Conversation not found'
-      });
-    }
-
-    if (conversation.user_id !== userId && req.user!.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied'
-      });
-    }
-
-    const messages = await ChatService.getMessages(id as string, limit);
-
-    res.json({
-      success: true,
-      data: {
-        messages: messages
+      // Verify conversation ownership
+      const conversation = await ChatService.getConversation(id as string);
+      if (!conversation) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation not found",
+        });
       }
-    });
-  } catch (error: any) {
-    logger.error('Error getting messages:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get messages'
-    });
-  }
-});
+
+      if (conversation.user_id !== userId && req.user!.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied",
+        });
+      }
+
+      const messages = await ChatService.getMessages(id as string, limit);
+
+      res.json({
+        success: true,
+        data: {
+          messages: messages,
+        },
+      });
+    } catch (error: any) {
+      logger.error("Error getting messages:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to get messages",
+      });
+    }
+  },
+);
 
 /**
  * DELETE /api/v1/chat/conversations/:id
  * Delete a conversation
  */
-router.delete('/conversations/:id', authenticate, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user!.userId;
+router.delete(
+  "/conversations/:id",
+  authenticate,
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.userId;
 
-    // Verify conversation ownership
-    const conversation = await ChatService.getConversation(id as string);
-    if (!conversation) {
-      return res.status(404).json({
+      // Verify conversation ownership
+      const conversation = await ChatService.getConversation(id as string);
+      if (!conversation) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation not found",
+        });
+      }
+
+      if (conversation.user_id !== userId && req.user!.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied",
+        });
+      }
+
+      await ChatService.deleteConversation(id as string);
+
+      res.json({
+        success: true,
+        message: "Conversation deleted successfully",
+      });
+    } catch (error: any) {
+      logger.error("Error deleting conversation:", error);
+      res.status(500).json({
         success: false,
-        error: 'Conversation not found'
+        error: "Failed to delete conversation",
       });
     }
-
-    if (conversation.user_id !== userId && req.user!.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied'
-      });
-    }
-
-    await ChatService.deleteConversation(id as string);
-
-    res.json({
-      success: true,
-      message: 'Conversation deleted successfully'
-    });
-  } catch (error: any) {
-    logger.error('Error deleting conversation:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to delete conversation'
-    });
-  }
-});
+  },
+);
 
 export default router;

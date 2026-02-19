@@ -28,6 +28,13 @@ interface RAGQueryOptions {
   phase?: string;
   language?: "en" | "hi";
   maxResults?: number;
+  studentProfile?: {
+    name?: string;
+    collegeName?: string;
+    year?: string;
+    interests?: string[];
+    hostelResident?: boolean;
+  };
 }
 
 interface RAGResponse {
@@ -368,10 +375,16 @@ Answer:`;
           model: "gemini-2.5-pro",
         });
 
+        // Build profile context for personalized responses
+        const profile = options.studentProfile;
+        const profileContext = profile
+          ? `\nStudent Profile: Name: ${profile.name || "Student"}, College: ${profile.collegeName || "Unknown"}, Branch: ${options.branch || profile.collegeName || "Unknown"}, Year: ${profile.year || "Unknown"}, Hostel: ${profile.hostelResident ? "Yes" : "No"}, Interests: ${profile.interests?.join(", ") || "Not specified"}.\nPersonalize your response based on this student's profile.`
+          : "";
+
         const prompt =
           language === "hi"
-            ? `आप P.A.L. हैं - एक कैंपस सहायक AI। निम्नलिखित प्रश्न का संक्षिप्त और सहायक उत्तर दें:\n\n${query}\n\nयदि आपको जानकारी नहीं है, तो कृपया स्पष्ट रूप से बताएं।`
-            : `You are P.A.L. - a helpful AI campus assistant for college onboarding. Answer the following question concisely and helpfully:\n\n${query}\n\nIf you don't have specific information, please say so clearly and suggest contacting the admin.`;
+            ? `आप P.A.L. हैं - एक कैंपस सहायक AI। ${profileContext}\n\nनिम्नलिखित प्रश्न का संक्षिप्त और सहायक उत्तर दें:\n\n${query}\n\nयदि आपको जानकारी नहीं है, तो कृपया स्पष्ट रूप से बताएं।`
+            : `You are P.A.L. - a helpful AI campus assistant for college onboarding.${profileContext}\n\nAnswer the following question concisely and helpfully:\n\n${query}\n\nIf you don't have specific information, please say so clearly and suggest contacting the admin.`;
 
         const result = await geminiModel.generateContent(prompt);
         const answer = result.response.text();

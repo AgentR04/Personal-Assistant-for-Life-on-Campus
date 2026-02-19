@@ -13,6 +13,7 @@
     "lint": "eslint src --ext .ts",
     "db:migrate": "tsx -r dotenv/config src/db/migrate.ts",
     "db:seed": "tsx -r dotenv/config src/db/seed.ts",
+    "seed:knowledge": "tsx src/db/seed-knowledge.ts",
     "db:setup-storage": "tsx -r dotenv/config src/db/setup-storage.ts",
     "check-env": "tsx -r dotenv/config src/check-env.ts"
   },

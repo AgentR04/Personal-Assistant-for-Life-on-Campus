@@ -136,6 +136,17 @@ export const api = {
 
     deleteConversation: (id: string) =>
       apiClient.delete(`/chat/conversations/${id}`),
+
+    getProfile: () => apiClient.get("/chat/profile"),
+
+    saveProfile: (profile: {
+      name: string;
+      collegeName: string;
+      branch: string;
+      year: string;
+      hostelResident: boolean;
+      interests: string[];
+    }) => apiClient.post("/chat/profile", profile),
   },
 
   // Notifications

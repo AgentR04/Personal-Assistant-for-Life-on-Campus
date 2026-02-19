@@ -1,16 +1,15 @@
-import { v4 as uuidv4 } from 'uuid';
-import { supabaseAdmin } from '../config/database';
-import { logger } from '../utils/logger';
-import RAGService from './RAGService';
-import SentimentService from './SentimentService';
-import { redisClient } from '../config/redis';
+import { supabaseAdmin } from "../config/database";
+import { redisClient } from "../config/redis";
+import { logger } from "../utils/logger";
+import RAGService from "./RAGService";
+import SentimentService from "./SentimentService";
 
 interface Message {
   id: string;
   conversation_id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
-  language: 'en' | 'hi';
+  language: "en" | "hi";
   sentiment_score?: number;
   timestamp: Date;
   channel?: string;
@@ -41,16 +40,19 @@ class ChatService {
   /**
    * Create a new conversation
    */
-  async createConversation(userId: string, title?: string): Promise<Conversation> {
+  async createConversation(
+    userId: string,
+    title?: string,
+  ): Promise<Conversation> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('conversations')
+        .from("conversations")
         .insert({
           user_id: userId,
-          channel: 'web',
+          channel: "web",
           started_at: new Date(),
           last_message_at: new Date(),
-          context: { title: title || 'New Conversation' }
+          context: { title: title || "New Conversation" },
         })
         .select()
         .single();
@@ -60,7 +62,7 @@ class ChatService {
       logger.info(`Created conversation ${data.id} for user ${userId}`);
       return data;
     } catch (error) {
-      logger.error('Error creating conversation:', error);
+      logger.error("Error creating conversation:", error);
       throw error;
     }
   }
@@ -71,15 +73,15 @@ class ChatService {
   async getConversation(conversationId: string): Promise<Conversation | null> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('conversations')
-        .select('*')
-        .eq('id', conversationId)
+        .from("conversations")
+        .select("*")
+        .eq("id", conversationId)
         .single();
 
       if (error) throw error;
       return data;
     } catch (error) {
-      logger.error('Error getting conversation:', error);
+      logger.error("Error getting conversation:", error);
       return null;
     }
   }
@@ -87,19 +89,22 @@ class ChatService {
   /**
    * Get user conversations
    */
-  async getUserConversations(userId: string, limit: number = 20): Promise<Conversation[]> {
+  async getUserConversations(
+    userId: string,
+    limit: number = 20,
+  ): Promise<Conversation[]> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('conversations')
-        .select('*')
-        .eq('user_id', userId)
-        .order('last_message_at', { ascending: false })
+        .from("conversations")
+        .select("*")
+        .eq("user_id", userId)
+        .order("last_message_at", { ascending: false })
         .limit(limit);
 
       if (error) throw error;
       return data || [];
     } catch (error) {
-      logger.error('Error getting user conversations:', error);
+      logger.error("Error getting user conversations:", error);
       return [];
     }
   }
@@ -114,7 +119,14 @@ class ChatService {
     options: {
       branch?: string;
       phase?: string;
-    } = {}
+      studentProfile?: {
+        name?: string;
+        collegeName?: string;
+        year?: string;
+        interests?: string[];
+        hostelResident?: boolean;
+      };
+    } = {},
   ): Promise<ChatResponse> {
     try {
       // Detect language
@@ -123,15 +135,17 @@ class ChatService {
       // Save user message
       const userMessage = await this.saveMessage({
         conversation_id: conversationId,
-        sender_type: 'user' as 'user' | 'assistant',
+        sender_type: "user" as "user" | "assistant",
         content,
-        language
+        language,
       });
 
       // Analyze sentiment (async, don't wait)
-      SentimentService.analyzeMessage(userId, userMessage.id, content).catch(err => {
-        logger.error('Error analyzing sentiment:', err);
-      });
+      SentimentService.analyzeMessage(userId, userMessage.id, content).catch(
+        (err) => {
+          logger.error("Error analyzing sentiment:", err);
+        },
+      );
 
       // Get conversation context from Redis
       const context = await this.getConversationContext(conversationId);
@@ -142,57 +156,59 @@ class ChatService {
         branch: options.branch,
         phase: options.phase,
         language,
-        maxResults: 5
+        maxResults: 5,
+        studentProfile: options.studentProfile,
       });
 
       // Check confidence - if too low, escalate
       if (ragResponse.confidence < 0.5) {
-        const escalationMessage = language === 'hi'
-          ? 'मुझे इस प्रश्न का पूरा उत्तर नहीं मिल रहा है। क्या मैं आपको किसी व्यवस्थापक से जोड़ दूं?'
-          : "I'm not fully confident about this answer. Would you like me to connect you with an administrator?";
+        const escalationMessage =
+          language === "hi"
+            ? "मुझे इस प्रश्न का पूरा उत्तर नहीं मिल रहा है। क्या मैं आपको किसी व्यवस्थापक से जोड़ दूं?"
+            : "I'm not fully confident about this answer. Would you like me to connect you with an administrator?";
 
         const assistantMessage = await this.saveMessage({
           conversation_id: conversationId,
-          sender_type: 'assistant' as 'user' | 'assistant',
+          sender_type: "assistant" as "user" | "assistant",
           content: escalationMessage,
-          language
+          language,
         });
 
         return {
           message: assistantMessage,
           sources: ragResponse.sources,
-          confidence: ragResponse.confidence
+          confidence: ragResponse.confidence,
         };
       }
 
       // Save assistant response
       const assistantMessage = await this.saveMessage({
         conversation_id: conversationId,
-        sender_type: 'assistant' as 'user' | 'assistant',
+        sender_type: "assistant" as "user" | "assistant",
         content: ragResponse.answer,
-        language
+        language,
       });
 
       // Update conversation context in Redis
       await this.updateConversationContext(conversationId, {
         lastMessage: content,
         lastResponse: ragResponse.answer,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Update conversation last_message_at
       await supabaseAdmin
-        .from('conversations')
+        .from("conversations")
         .update({ last_message_at: new Date() })
-        .eq('id', conversationId);
+        .eq("id", conversationId);
 
       return {
         message: assistantMessage,
         sources: ragResponse.sources,
-        confidence: ragResponse.confidence
+        confidence: ragResponse.confidence,
       };
     } catch (error) {
-      logger.error('Error sending message:', error);
+      logger.error("Error sending message:", error);
       throw error;
     }
   }
@@ -200,19 +216,22 @@ class ChatService {
   /**
    * Get conversation messages
    */
-  async getMessages(conversationId: string, limit: number = 50): Promise<Message[]> {
+  async getMessages(
+    conversationId: string,
+    limit: number = 50,
+  ): Promise<Message[]> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('timestamp', { ascending: true })
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("timestamp", { ascending: true })
         .limit(limit);
 
       if (error) throw error;
       return data || [];
     } catch (error) {
-      logger.error('Error getting messages:', error);
+      logger.error("Error getting messages:", error);
       return [];
     }
   }
@@ -222,14 +241,14 @@ class ChatService {
    */
   private async saveMessage(data: {
     conversation_id: string;
-    sender_type: 'user' | 'assistant';
+    sender_type: "user" | "assistant";
     content: string;
-    language: 'en' | 'hi';
+    language: "en" | "hi";
     sentiment_score?: number;
   }): Promise<Message> {
     try {
       const { data: message, error } = await supabaseAdmin
-        .from('messages')
+        .from("messages")
         .insert({
           conversation_id: data.conversation_id,
           role: data.sender_type,
@@ -237,7 +256,7 @@ class ChatService {
           language: data.language,
           sentiment_score: data.sentiment_score,
           timestamp: new Date(),
-          channel: 'web'
+          channel: "web",
         })
         .select()
         .single();
@@ -245,7 +264,7 @@ class ChatService {
       if (error) throw error;
       return message;
     } catch (error) {
-      logger.error('Error saving message:', error);
+      logger.error("Error saving message:", error);
       throw error;
     }
   }
@@ -253,9 +272,9 @@ class ChatService {
   /**
    * Detect language
    */
-  private detectLanguage(text: string): 'en' | 'hi' {
+  private detectLanguage(text: string): "en" | "hi" {
     const hindiPattern = /[\u0900-\u097F]/;
-    return hindiPattern.test(text) ? 'hi' : 'en';
+    return hindiPattern.test(text) ? "hi" : "en";
   }
 
   /**
@@ -269,7 +288,7 @@ class ChatService {
       const context = await redisClient.get(key);
       return context ? JSON.parse(context) : null;
     } catch (error) {
-      logger.warn('Error getting conversation context from Redis:', error);
+      logger.warn("Error getting conversation context from Redis:", error);
       return null;
     }
   }
@@ -277,14 +296,17 @@ class ChatService {
   /**
    * Update conversation context in Redis
    */
-  private async updateConversationContext(conversationId: string, context: any): Promise<void> {
+  private async updateConversationContext(
+    conversationId: string,
+    context: any,
+  ): Promise<void> {
     try {
       if (!redisClient?.isOpen) return;
 
       const key = `conversation:${conversationId}:context`;
       await redisClient.setEx(key, 3600, JSON.stringify(context)); // 1 hour TTL
     } catch (error) {
-      logger.warn('Error updating conversation context in Redis:', error);
+      logger.warn("Error updating conversation context in Redis:", error);
     }
   }
 
@@ -295,15 +317,15 @@ class ChatService {
     try {
       // Delete messages first
       await supabaseAdmin
-        .from('messages')
+        .from("messages")
         .delete()
-        .eq('conversation_id', conversationId);
+        .eq("conversation_id", conversationId);
 
       // Delete conversation
       await supabaseAdmin
-        .from('conversations')
+        .from("conversations")
         .delete()
-        .eq('id', conversationId);
+        .eq("id", conversationId);
 
       // Clear Redis context
       if (redisClient?.isOpen) {
@@ -312,7 +334,7 @@ class ChatService {
 
       logger.info(`Deleted conversation ${conversationId}`);
     } catch (error) {
-      logger.error('Error deleting conversation:', error);
+      logger.error("Error deleting conversation:", error);
       throw error;
     }
   }
