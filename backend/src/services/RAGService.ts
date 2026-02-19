@@ -1,15 +1,23 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { ChromaClient } from "chromadb";
+import { ChromaClient, CloudClient } from "chromadb";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { logger } from "../utils/logger";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
-// Initialize ChromaDB client
-const chromaClient = new ChromaClient({
-  path: `http://${process.env.CHROMA_HOST || "localhost"}:${process.env.CHROMA_PORT || 8000}`,
-});
+// Initialize ChromaDB client (cloud or local)
+const chromaClient = process.env.CHROMA_API_KEY
+  ? new CloudClient({
+      apiKey: process.env.CHROMA_API_KEY,
+      tenant: process.env.CHROMA_TENANT || "default_tenant",
+      database: process.env.CHROMA_DATABASE || "default_database",
+      cloudHost: `https://${process.env.CHROMA_HOST || "api.trychroma.com"}`,
+      cloudPort: "443",
+    })
+  : new ChromaClient({
+      path: `http://${process.env.CHROMA_HOST || "localhost"}:${process.env.CHROMA_PORT || 8000}`,
+    });
 
 const COLLECTION_NAME =
   process.env.CHROMA_COLLECTION_NAME || "pal_knowledge_base";
@@ -198,7 +206,9 @@ class RAGService {
       };
     } catch (error) {
       logger.error("Error querying knowledge base:", error);
-      throw error;
+      // Fall back to direct Gemini response instead of crashing
+      logger.warn("Falling back to direct Gemini response");
+      return await this.fallbackQuery(query, options);
     }
   }
 
@@ -208,7 +218,7 @@ class RAGService {
   private async generateEmbeddings(texts: string[]): Promise<number[][]> {
     try {
       const embeddingModel = genAI.getGenerativeModel({
-        model: "text-embedding-004",
+        model: "gemini-embedding-001",
       });
 
       const embeddings: number[][] = [];
@@ -355,7 +365,7 @@ Answer:`;
     if (process.env.GOOGLE_API_KEY) {
       try {
         const geminiModel = genAI.getGenerativeModel({
-          model: "gemini-1.5-pro",
+          model: "gemini-2.5-pro",
         });
 
         const prompt =

@@ -1,5 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { logger } from '../utils/logger';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { logger } from "../utils/logger";
 
 interface OCRResult {
   text: string;
@@ -26,7 +26,7 @@ interface DocumentQuality {
   isBlurry: boolean;
   isLowResolution: boolean;
   hasGoodContrast: boolean;
-  overallQuality: 'good' | 'acceptable' | 'poor';
+  overallQuality: "good" | "acceptable" | "poor";
   qualityScore: number;
 }
 
@@ -35,10 +35,12 @@ class VisionService {
 
   constructor() {
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey || apiKey === 'your_google_gemini_api_key') {
-      logger.warn('Google API key not configured. Vision AI features will be limited.');
+    if (!apiKey || apiKey === "your_google_gemini_api_key") {
+      logger.warn(
+        "Google API key not configured. Vision AI features will be limited.",
+      );
     }
-    this.genAI = new GoogleGenerativeAI(apiKey || '');
+    this.genAI = new GoogleGenerativeAI(apiKey || "");
   }
 
   /**
@@ -46,10 +48,12 @@ class VisionService {
    */
   async performOCR(imageBuffer: Buffer, mimeType: string): Promise<OCRResult> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-pro",
+      });
 
       // Convert buffer to base64
-      const base64Image = imageBuffer.toString('base64');
+      const base64Image = imageBuffer.toString("base64");
 
       const prompt = `Extract all text from this document image. 
       Return the text exactly as it appears, preserving formatting and structure.
@@ -59,10 +63,10 @@ class VisionService {
         {
           inlineData: {
             data: base64Image,
-            mimeType: mimeType
-          }
+            mimeType: mimeType,
+          },
         },
-        prompt
+        prompt,
       ]);
 
       const response = result.response;
@@ -74,11 +78,11 @@ class VisionService {
       return {
         text,
         confidence,
-        blocks: [{ text, confidence }]
+        blocks: [{ text, confidence }],
       };
     } catch (error) {
-      logger.error('Error performing OCR:', error);
-      throw new Error('Failed to perform OCR on document');
+      logger.error("Error performing OCR:", error);
+      throw new Error("Failed to perform OCR on document");
     }
   }
 
@@ -88,12 +92,14 @@ class VisionService {
   async extractFields(
     imageBuffer: Buffer,
     mimeType: string,
-    documentType: string
+    documentType: string,
   ): Promise<{ data: ExtractedData; confidence: number }> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-pro",
+      });
 
-      const base64Image = imageBuffer.toString('base64');
+      const base64Image = imageBuffer.toString("base64");
 
       // Get extraction prompt based on document type
       const prompt = this.getExtractionPrompt(documentType);
@@ -102,10 +108,10 @@ class VisionService {
         {
           inlineData: {
             data: base64Image,
-            mimeType: mimeType
-          }
+            mimeType: mimeType,
+          },
         },
-        prompt
+        prompt,
       ]);
 
       const response = result.response;
@@ -117,22 +123,27 @@ class VisionService {
 
       return {
         data: extractedData,
-        confidence
+        confidence,
       };
     } catch (error) {
-      logger.error('Error extracting fields:', error);
-      throw new Error('Failed to extract fields from document');
+      logger.error("Error extracting fields:", error);
+      throw new Error("Failed to extract fields from document");
     }
   }
 
   /**
    * Assess document quality
    */
-  async assessQuality(imageBuffer: Buffer, mimeType: string): Promise<DocumentQuality> {
+  async assessQuality(
+    imageBuffer: Buffer,
+    mimeType: string,
+  ): Promise<DocumentQuality> {
     try {
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-pro",
+      });
 
-      const base64Image = imageBuffer.toString('base64');
+      const base64Image = imageBuffer.toString("base64");
 
       const prompt = `Analyze this document image and assess its quality.
       Check for:
@@ -154,10 +165,10 @@ class VisionService {
         {
           inlineData: {
             data: base64Image,
-            mimeType: mimeType
-          }
+            mimeType: mimeType,
+          },
         },
-        prompt
+        prompt,
       ]);
 
       const response = result.response;
@@ -168,14 +179,14 @@ class VisionService {
 
       return quality;
     } catch (error) {
-      logger.error('Error assessing document quality:', error);
+      logger.error("Error assessing document quality:", error);
       // Return default quality assessment
       return {
         isBlurry: false,
         isLowResolution: false,
         hasGoodContrast: true,
-        overallQuality: 'acceptable',
-        qualityScore: 70
+        overallQuality: "acceptable",
+        qualityScore: 70,
       };
     }
   }
@@ -249,16 +260,22 @@ class VisionService {
         - Fitness Status
         - Any medical conditions mentioned
         
-        Return the data in JSON format.`
+        Return the data in JSON format.`,
     };
 
-    return prompts[documentType] || `Extract all relevant information from this document in JSON format.`;
+    return (
+      prompts[documentType] ||
+      `Extract all relevant information from this document in JSON format.`
+    );
   }
 
   /**
    * Parse extracted data from AI response
    */
-  private parseExtractedData(text: string, documentType: string): ExtractedData {
+  private parseExtractedData(
+    text: string,
+    documentType: string,
+  ): ExtractedData {
     try {
       // Try to extract JSON from the response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -268,12 +285,16 @@ class VisionService {
 
       // Fallback: parse key-value pairs
       const data: ExtractedData = { raw_text: text };
-      const lines = text.split('\n');
+      const lines = text.split("\n");
 
       for (const line of lines) {
-        const colonIndex = line.indexOf(':');
+        const colonIndex = line.indexOf(":");
         if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim().toLowerCase().replace(/\s+/g, '_');
+          const key = line
+            .substring(0, colonIndex)
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, "_");
           const value = line.substring(colonIndex + 1).trim();
           if (key && value) {
             data[key] = value;
@@ -283,7 +304,7 @@ class VisionService {
 
       return data;
     } catch (error) {
-      logger.warn('Failed to parse extracted data, returning raw text');
+      logger.warn("Failed to parse extracted data, returning raw text");
       return { raw_text: text };
     }
   }
@@ -302,12 +323,17 @@ class VisionService {
           isBlurry: parsed.isBlurry || false,
           isLowResolution: parsed.isLowResolution || false,
           hasGoodContrast: parsed.hasGoodContrast !== false,
-          overallQuality: qualityScore >= 80 ? 'good' : qualityScore >= 60 ? 'acceptable' : 'poor',
-          qualityScore
+          overallQuality:
+            qualityScore >= 80
+              ? "good"
+              : qualityScore >= 60
+                ? "acceptable"
+                : "poor",
+          qualityScore,
         };
       }
     } catch (error) {
-      logger.warn('Failed to parse quality assessment');
+      logger.warn("Failed to parse quality assessment");
     }
 
     // Default quality
@@ -315,8 +341,8 @@ class VisionService {
       isBlurry: false,
       isLowResolution: false,
       hasGoodContrast: true,
-      overallQuality: 'acceptable',
-      qualityScore: 70
+      overallQuality: "acceptable",
+      qualityScore: 70,
     };
   }
 
@@ -329,7 +355,7 @@ class VisionService {
     let confidence = 0.7;
 
     // Check for common OCR issues
-    if (text.includes('�') || text.includes('???')) {
+    if (text.includes("�") || text.includes("???")) {
       confidence -= 0.2;
     }
 
@@ -348,7 +374,10 @@ class VisionService {
   /**
    * Validate extracted data against expected patterns
    */
-  validateExtractedData(data: ExtractedData, _documentType: string): {
+  validateExtractedData(
+    data: ExtractedData,
+    _documentType: string,
+  ): {
     isValid: boolean;
     errors: string[];
     warnings: string[];
@@ -358,34 +387,34 @@ class VisionService {
 
     // Document type specific validation
     switch (_documentType) {
-      case 'marksheet_10th':
-      case 'marksheet_12th':
+      case "marksheet_10th":
+      case "marksheet_12th":
         if (!data.student_name && !data.name) {
-          errors.push('Student name not found');
+          errors.push("Student name not found");
         }
         if (!data.roll_number && !data.rollnumber) {
-          warnings.push('Roll number not found');
+          warnings.push("Roll number not found");
         }
         if (!data.percentage && !data.cgpa && !data.total_marks) {
-          warnings.push('Marks/percentage not found');
+          warnings.push("Marks/percentage not found");
         }
         break;
 
-      case 'id_proof':
+      case "id_proof":
         if (!data.id_number && !data.document_number) {
-          errors.push('ID number not found');
+          errors.push("ID number not found");
         }
         if (!data.name) {
-          errors.push('Name not found');
+          errors.push("Name not found");
         }
         break;
 
-      case 'fee_receipt':
+      case "fee_receipt":
         if (!data.amount && !data.amount_paid) {
-          errors.push('Payment amount not found');
+          errors.push("Payment amount not found");
         }
         if (!data.receipt_number && !data.transaction_id) {
-          warnings.push('Receipt/Transaction number not found');
+          warnings.push("Receipt/Transaction number not found");
         }
         break;
     }
@@ -393,7 +422,7 @@ class VisionService {
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 }

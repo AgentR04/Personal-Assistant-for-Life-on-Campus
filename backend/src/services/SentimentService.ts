@@ -75,7 +75,7 @@ class SentimentService {
     }
 
     try {
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
       const prompt = `Analyze the sentiment and emotional state of this student message. Return ONLY a JSON object with this exact structure:
 

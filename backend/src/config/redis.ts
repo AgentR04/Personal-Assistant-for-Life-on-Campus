@@ -1,7 +1,7 @@
 import { createClient } from "redis";
 import { logger } from "../utils/logger";
 
-const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+const redisUrl = process.env.REDIS_URL || "redis://:LbmREFYXtWVF4hQAVCzxNIUpykrDfCR7@redis-12493.c252.ap-southeast-1-1.ec2.cloud.redislabs.com:12493";
 
 export const redisClient = createClient({
   password: process.env.REDIS_PASSWORD,
