@@ -1,19 +1,19 @@
-import { z } from 'zod';
-import { DocumentType, TrafficLightStatus } from './types';
+import { z } from "zod";
+import { DocumentType, TrafficLightStatus } from "./types";
 
 // Zod schemas
 export const DocumentSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   document_type: z.enum([
-    'marksheet_10th',
-    'marksheet_12th',
-    'id_proof',
-    'photo',
-    'fee_receipt',
-    'medical_certificate'
+    "marksheet_10th",
+    "marksheet_12th",
+    "id_proof",
+    "photo",
+    "fee_receipt",
+    "medical_certificate",
   ]),
-  status: z.enum(['green', 'yellow', 'red', 'processing']),
+  status: z.enum(["green", "yellow", "red", "processing"]),
   original_file_url: z.string().url(),
   processed_file_url: z.string().url().optional().nullable(),
   uploaded_at: z.date(),
@@ -24,14 +24,14 @@ export const DocumentSchema = z.object({
   confidence: z.number().min(0).max(1).optional().nullable(),
   review_notes: z.string().optional().nullable(),
   created_at: z.date(),
-  updated_at: z.date()
+  updated_at: z.date(),
 });
 
 export const CreateDocumentSchema = DocumentSchema.omit({
   id: true,
   created_at: true,
   updated_at: true,
-  uploaded_at: true
+  uploaded_at: true,
 }).partial({
   status: true,
   processed_file_url: true,
@@ -40,7 +40,7 @@ export const CreateDocumentSchema = DocumentSchema.omit({
   extracted_data: true,
   validation_results: true,
   confidence: true,
-  review_notes: true
+  review_notes: true,
 });
 
 // TypeScript interfaces
@@ -48,7 +48,7 @@ export interface Document {
   id: string;
   user_id: string;
   document_type: DocumentType;
-  status: TrafficLightStatus | 'processing';
+  status: TrafficLightStatus | "processing";
   original_file_url: string;
   processed_file_url?: string | null;
   uploaded_at: Date;
@@ -85,11 +85,12 @@ export interface CreateDocumentInput {
   user_id: string;
   document_type: DocumentType;
   original_file_url: string;
-  status?: TrafficLightStatus | 'processing';
+  status?: TrafficLightStatus | "processing";
+  extracted_data?: ExtractedData | null;
 }
 
 export interface UpdateDocumentInput {
-  status?: TrafficLightStatus | 'processing';
+  status?: TrafficLightStatus | "processing";
   processed_file_url?: string;
   verified_at?: Date;
   verified_by?: string;

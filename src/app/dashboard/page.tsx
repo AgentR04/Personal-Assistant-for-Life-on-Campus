@@ -1,24 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { AuthGuard } from "@/components/auth-guard";
+import { ProjectMatcher } from "@/components/dashboard/project-matcher";
+import { QuestWidget } from "@/components/dashboard/quest-widget";
+import { OnboardingTour, dashboardTour } from "@/components/onboarding-tour";
+import { Progress } from "@/components/ui/progress";
 import confetti from "canvas-confetti";
 import {
-  FileCheck,
-  CreditCard,
-  Building,
+  Bell,
   BookOpen,
+  Building,
+  Calendar,
   CheckCircle2,
   Circle,
   Clock,
-  TrendingUp,
-  Calendar,
-  Bell,
+  CreditCard,
+  FileCheck,
   Loader2,
+  TrendingUp,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { AuthGuard } from "@/components/auth-guard";
-import api from "@/lib/api";
-import { OnboardingTour, dashboardTour } from "@/components/onboarding-tour";
+import { useEffect, useState } from "react";
 
 const phaseIcons: Record<string, any> = {
   "Document Verification": FileCheck,
@@ -41,7 +42,7 @@ export default function DashboardPage() {
           return {
             ...phase,
             tasks: phase.tasks.map((task: any) =>
-              task.name === taskName ? { ...task, done: !task.done } : task
+              task.name === taskName ? { ...task, done: !task.done } : task,
             ),
           };
         }
@@ -50,22 +51,29 @@ export default function DashboardPage() {
 
       // Recalculate progress
       const totalTasks = newPhases.flatMap((p) => p.tasks).length;
-      const doneTasks = newPhases.flatMap((p) => p.tasks).filter((t) => t.done).length;
+      const doneTasks = newPhases
+        .flatMap((p) => p.tasks)
+        .filter((t) => t.done).length;
       const newProgress = Math.round((doneTasks / totalTasks) * 100);
       setProgressPercent(newProgress);
-      
+
       // Trigger confetti if all tasks are complete!
       if (newProgress === 100 && progressPercent !== 100) {
         // Fire confetti from multiple angles
         const duration = 3000;
         const animationEnd = Date.now() + duration;
-        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        const defaults = {
+          startVelocity: 30,
+          spread: 360,
+          ticks: 60,
+          zIndex: 0,
+        };
 
         function randomInRange(min: number, max: number) {
           return Math.random() * (max - min) + min;
         }
 
-        const interval: any = setInterval(function() {
+        const interval: any = setInterval(function () {
           const timeLeft = animationEnd - Date.now();
 
           if (timeLeft <= 0) {
@@ -76,16 +84,16 @@ export default function DashboardPage() {
           }
 
           const particleCount = 50 * (timeLeft / duration);
-          
+
           confetti({
             ...defaults,
             particleCount,
-            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
           });
           confetti({
             ...defaults,
             particleCount,
-            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
           });
         }, 250);
       }
@@ -98,103 +106,103 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
+
         // ALWAYS use mock data for now to populate the dashboard
         console.log("Using mock data for dashboard");
-        
+
         // Load saved profile if exists
         const savedProfile = localStorage.getItem("userProfile");
         const profileData = savedProfile ? JSON.parse(savedProfile) : null;
-          
-          setUserData({
-            name: profileData?.name || "Student User",
-            admissionNumber: profileData?.admissionNumber || "CS-2026-001",
-            branch: profileData?.branch || "Computer Science",
-            currentPhase: "Document Verification",
-            overallProgress: 35,
-            year: profileData?.year || "1st Year",
-            batch: "2026",
-          });
-          
-          setPhases([
-            {
-              id: "documents",
-              title: "Document Verification",
-              icon: FileCheck,
-              status: "current",
-              tasks: [
-                { name: "Upload 10th Marksheet", done: true },
-                { name: "Upload 12th Marksheet", done: true },
-                { name: "Upload ID Proof", done: false },
-                { name: "Upload Photo", done: false },
-              ],
-            },
-            {
-              id: "fees",
-              title: "Fee Payment",
-              icon: CreditCard,
-              status: "upcoming",
-              tasks: [
-                { name: "Pay Admission Fee", done: false },
-                { name: "Pay Hostel Fee", done: false },
-                { name: "Upload Fee Receipt", done: false },
-              ],
-            },
-            {
-              id: "hostel",
-              title: "Hostel Allotment",
-              icon: Building,
-              status: "upcoming",
-              tasks: [
-                { name: "Fill Hostel Preference", done: false },
-                { name: "Submit Medical Certificate", done: false },
-                { name: "Confirm Allotment", done: false },
-              ],
-            },
-            {
-              id: "academic",
-              title: "Academic Setup",
-              icon: BookOpen,
-              status: "upcoming",
-              tasks: [
-                { name: "Register for Courses", done: false },
-                { name: "Download Timetable", done: false },
-                { name: "Join WhatsApp Groups", done: false },
-              ],
-            },
-          ]);
-          
-          setNotifications([
-            {
-              id: "1",
-              title: "Welcome to P.A.L.!",
-              message: "Complete your document verification to proceed.",
-              priority: "high",
-              type: "urgent",
-              createdAt: new Date().toISOString(),
-            },
-            {
-              id: "2",
-              title: "Document Uploaded",
-              message: "Your 10th marksheet has been verified successfully.",
-              priority: "medium",
-              type: "info",
-              createdAt: new Date().toISOString(),
-            },
-            {
-              id: "3",
-              title: "Reminder",
-              message: "Fee payment deadline is approaching - 5 days left.",
-              priority: "high",
-              type: "urgent",
-              createdAt: new Date().toISOString(),
-            },
-          ]);
-          
-          setProgressPercent(35);
-          setLoading(false);
-          return;
-        
+
+        setUserData({
+          name: profileData?.name || "Student User",
+          admissionNumber: profileData?.admissionNumber || "CS-2026-001",
+          branch: profileData?.branch || "Computer Science",
+          currentPhase: "Document Verification",
+          overallProgress: 35,
+          year: profileData?.year || "1st Year",
+          batch: "2026",
+        });
+
+        setPhases([
+          {
+            id: "documents",
+            title: "Document Verification",
+            icon: FileCheck,
+            status: "current",
+            tasks: [
+              { name: "Upload 10th Marksheet", done: true },
+              { name: "Upload 12th Marksheet", done: true },
+              { name: "Upload ID Proof", done: false },
+              { name: "Upload Photo", done: false },
+            ],
+          },
+          {
+            id: "fees",
+            title: "Fee Payment",
+            icon: CreditCard,
+            status: "upcoming",
+            tasks: [
+              { name: "Pay Admission Fee", done: false },
+              { name: "Pay Hostel Fee", done: false },
+              { name: "Upload Fee Receipt", done: false },
+            ],
+          },
+          {
+            id: "hostel",
+            title: "Hostel Allotment",
+            icon: Building,
+            status: "upcoming",
+            tasks: [
+              { name: "Fill Hostel Preference", done: false },
+              { name: "Submit Medical Certificate", done: false },
+              { name: "Confirm Allotment", done: false },
+            ],
+          },
+          {
+            id: "academic",
+            title: "Academic Setup",
+            icon: BookOpen,
+            status: "upcoming",
+            tasks: [
+              { name: "Register for Courses", done: false },
+              { name: "Download Timetable", done: false },
+              { name: "Join WhatsApp Groups", done: false },
+            ],
+          },
+        ]);
+
+        setNotifications([
+          {
+            id: "1",
+            title: "Welcome to P.A.L.!",
+            message: "Complete your document verification to proceed.",
+            priority: "high",
+            type: "urgent",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "2",
+            title: "Document Uploaded",
+            message: "Your 10th marksheet has been verified successfully.",
+            priority: "medium",
+            type: "info",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "3",
+            title: "Reminder",
+            message: "Fee payment deadline is approaching - 5 days left.",
+            priority: "high",
+            type: "urgent",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+
+        setProgressPercent(35);
+        setLoading(false);
+        return;
+
         /* Commented out real API calls for now
         // Use real data
         const profile = profileRes.data.user;
@@ -253,7 +261,6 @@ export default function DashboardPage() {
         }));
         setNotifications(formattedNotifs);
         */
-
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -301,7 +308,8 @@ export default function DashboardPage() {
             Welcome back, {userData?.name || "Student"}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {userData?.branch || "Branch"}, {userData?.year || "Year"} — Batch {userData?.batch || "2026"}
+            {userData?.branch || "Branch"}, {userData?.year || "Year"} — Batch{" "}
+            {userData?.batch || "2026"}
           </p>
         </div>
 
@@ -314,7 +322,9 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{progressPercent}%</p>
-                <p className="text-sm text-muted-foreground">Overall Progress</p>
+                <p className="text-sm text-muted-foreground">
+                  Overall Progress
+                </p>
               </div>
             </div>
             <Progress value={progressPercent} className="mt-4 h-2" />
@@ -326,12 +336,16 @@ export default function DashboardPage() {
                 <Calendar className="h-5 w-5 text-chart-4" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{currentPhase?.title || "N/A"}</p>
+                <p className="text-2xl font-bold">
+                  {currentPhase?.title || "N/A"}
+                </p>
                 <p className="text-sm text-muted-foreground">Current Stage</p>
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              {currentPhase ? `${currentPhase.tasks.filter((t: any) => t.done).length} of ${currentPhase.tasks.length} tasks done` : "No active phase"}
+              {currentPhase
+                ? `${currentPhase.tasks.filter((t: any) => t.done).length} of ${currentPhase.tasks.length} tasks done`
+                : "No active phase"}
             </p>
           </div>
 
@@ -342,13 +356,22 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{urgentNotifs}</p>
-                <p className="text-sm text-muted-foreground">Urgent Action{urgentNotifs !== 1 ? "s" : ""}</p>
+                <p className="text-sm text-muted-foreground">
+                  Urgent Action{urgentNotifs !== 1 ? "s" : ""}
+                </p>
               </div>
             </div>
             <p className="mt-4 text-sm text-destructive font-medium">
-              {urgentNotifs > 0 ? notifications.find((n) => n.type === "urgent")?.message : "No urgent actions"}
+              {urgentNotifs > 0
+                ? notifications.find((n) => n.type === "urgent")?.message
+                : "No urgent actions"}
             </p>
           </div>
+        </div>
+
+        {/* Feature 1: Project Matchmaker */}
+        <div className="mb-10">
+          <ProjectMatcher />
         </div>
 
         {/* Main Content - Two Column Layout */}
@@ -362,8 +385,10 @@ export default function DashboardPage() {
               </h2>
               <div className="grid gap-5 sm:grid-cols-2">
                 {phases.map((phase) => {
-                  const phaseComplete = phase.tasks.every((t) => t.done);
-                  const phaseDone = phase.tasks.filter((t) => t.done).length;
+                  const phaseComplete = phase.tasks.every((t: any) => t.done);
+                  const phaseDone = phase.tasks.filter(
+                    (t: any) => t.done,
+                  ).length;
                   return (
                     <div
                       key={phase.id}
@@ -380,8 +405,8 @@ export default function DashboardPage() {
                               phaseComplete
                                 ? "bg-chart-4/15"
                                 : phase.status === "current"
-                                ? "bg-chart-1/15"
-                                : "bg-secondary"
+                                  ? "bg-chart-1/15"
+                                  : "bg-secondary"
                             }`}
                           >
                             <phase.icon
@@ -389,8 +414,8 @@ export default function DashboardPage() {
                                 phaseComplete
                                   ? "text-chart-4"
                                   : phase.status === "current"
-                                  ? "text-chart-1"
-                                  : "text-muted-foreground"
+                                    ? "text-chart-1"
+                                    : "text-muted-foreground"
                               }`}
                             />
                           </div>
@@ -409,7 +434,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        {phase.tasks.map((task) => (
+                        {phase.tasks.map((task: any) => (
                           <button
                             key={task.name}
                             onClick={() => toggleTask(phase.id, task.name)}
@@ -441,6 +466,9 @@ export default function DashboardPage() {
 
           {/* Right Column - Notices and Updates */}
           <div className="space-y-6">
+            {/* Feature 2: RPG Quest Widget */}
+            <QuestWidget />
+
             {/* Important Notices */}
             <div>
               <h2 className="mb-4 text-lg font-semibold tracking-tight flex items-center gap-2">
@@ -451,7 +479,9 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-3">
                     <Bell className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="font-semibold text-sm text-destructive">Fee Payment Deadline</h3>
+                      <h3 className="font-semibold text-sm text-destructive">
+                        Fee Payment Deadline
+                      </h3>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Last date: March 15, 2026
                       </p>
@@ -464,7 +494,9 @@ export default function DashboardPage() {
                     <FileCheck className="h-5 w-5 text-chart-1 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm">Campus Handbook</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">52 pages • 1 week ago</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        52 pages • 1 week ago
+                      </p>
                       <button className="mt-2 text-xs font-medium text-chart-1 hover:underline">
                         View PDF →
                       </button>
@@ -477,7 +509,9 @@ export default function DashboardPage() {
                     <FileCheck className="h-5 w-5 text-chart-2 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm">Fee Structure</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">8 pages • 2 weeks ago</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        8 pages • 2 weeks ago
+                      </p>
                       <button className="mt-2 text-xs font-medium text-chart-2 hover:underline">
                         View PDF →
                       </button>
@@ -490,7 +524,9 @@ export default function DashboardPage() {
                     <FileCheck className="h-5 w-5 text-chart-3 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm">CS Syllabus</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">24 pages • 3 weeks ago</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        24 pages • 3 weeks ago
+                      </p>
                       <button className="mt-2 text-xs font-medium text-chart-3 hover:underline">
                         View PDF →
                       </button>
@@ -502,8 +538,12 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-3">
                     <FileCheck className="h-5 w-5 text-chart-4 shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm">Hostel Guidelines</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">16 pages • 1 month ago</p>
+                      <h3 className="font-semibold text-sm">
+                        Hostel Guidelines
+                      </h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        16 pages • 1 month ago
+                      </p>
                       <button className="mt-2 text-xs font-medium text-chart-4 hover:underline">
                         View PDF →
                       </button>
@@ -531,8 +571,8 @@ export default function DashboardPage() {
                         notif.type === "urgent"
                           ? "bg-destructive"
                           : notif.type === "social"
-                          ? "bg-chart-1"
-                          : "bg-chart-4"
+                            ? "bg-chart-1"
+                            : "bg-chart-4"
                       }`}
                     />
                     <div className="flex-1 min-w-0">

@@ -1,5 +1,6 @@
 "use client";
 
+import api from "@/lib/api";
 import {
   ArrowRight,
   Bot,
@@ -68,7 +69,6 @@ export default function LoginPage() {
       // Clear any old tokens first
       localStorage.clear();
 
-      // TEST MODE: Auto-create user and login
       const isAdmin = admissionNumber.toUpperCase().includes("ADMIN");
       const role = isAdmin ? "admin" : "student";
 
@@ -76,27 +76,20 @@ export default function LoginPage() {
 
       // Try to login with backend (will auto-create user if doesn't exist)
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "https://personal-assistant-for-life-on-campus-production.up.railway.app/api/v1"}/auth/verify-otp`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              admissionNumber,
-              otp,
-            }),
-          },
-        );
+        const response = await api.auth.verifyOTP(admissionNumber, otp);
+        const data = response.data;
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          // Store real token from backend
+        if (data.success) {
           console.log("=== LOGIN SUCCESS (Backend) ===");
           localStorage.setItem("token", data.data.accessToken);
+          localStorage.setItem("refreshToken", data.data.refreshToken);
+          localStorage.setItem("userId", data.data.user.id);
           localStorage.setItem("userRole", data.data.user.role);
           localStorage.setItem("userName", data.data.user.name);
-          localStorage.setItem("admissionNumber", admissionNumber);
+          localStorage.setItem(
+            "admissionNumber",
+            data.data.user.admissionNumber,
+          );
           localStorage.setItem("testMode", "false");
           loginSuccess = true;
 

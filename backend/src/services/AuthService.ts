@@ -94,6 +94,18 @@ export class AuthService {
       // Find user by admission number
       const user = await UserRepository.findByAdmissionNumber(admissionNumber);
       if (!user) {
+        // In development, allow OTP for non-existent users (auto-created at verify)
+        if (process.env.NODE_ENV === "development") {
+          const otp = this.generateOTP();
+          const otpKey = `otp:${admissionNumber}`;
+          await this.storeOTP(otpKey, otp, OTP_EXPIRY_SECONDS);
+          logger.info(`TEST MODE: OTP for new user ${admissionNumber}: ${otp}`);
+          return {
+            success: true,
+            message: "OTP sent (dev mode - user will be auto-created)",
+            expiresIn: OTP_EXPIRY_SECONDS,
+          };
+        }
         return {
           success: false,
           message: "User not found with this admission number",
@@ -175,9 +187,9 @@ export class AuthService {
                 phone: `+91${Math.floor(1000000000 + Math.random() * 9000000000)}`,
                 role: role,
                 branch: isAdmin ? "Administration" : "Computer Science",
-                batch: isAdmin ? "2026" : "2026",
-                current_phase: isAdmin ? null : "Document Verification",
-                enrollment_date: new Date().toISOString(),
+                batch: 2026,
+                current_phase: "documents",
+                enrollment_date: new Date().toISOString().split("T")[0],
               })
               .select()
               .single();
@@ -274,11 +286,11 @@ export class AuthService {
 
     const accessToken = jwt.sign(payload, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
-    });
+    } as jwt.SignOptions);
 
     const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
       expiresIn: "30d",
-    });
+    } as jwt.SignOptions);
 
     return { accessToken, refreshToken };
   }

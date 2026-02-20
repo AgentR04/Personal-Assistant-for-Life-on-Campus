@@ -161,7 +161,7 @@ class ChatService {
       });
 
       // Check confidence - if too low, escalate
-      if (ragResponse.confidence < 0.5) {
+      if (ragResponse.confidence < 0.3) {
         const escalationMessage =
           language === "hi"
             ? "मुझे इस प्रश्न का पूरा उत्तर नहीं मिल रहा है। क्या मैं आपको किसी व्यवस्थापक से जोड़ दूं?"

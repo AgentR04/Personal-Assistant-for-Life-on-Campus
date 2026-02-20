@@ -1,34 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "@/components/theme-provider";
 import {
-  Home,
-  MessageCircle,
+  BookOpen,
   FileCheck,
-  Users,
+  Heart,
   LayoutDashboard,
-  Bot,
-  Menu,
-  X,
   LogIn,
   LogOut,
-  Shield,
-  Settings,
-  Heart,
+  Menu,
+  MessageCircle,
   Moon,
+  Settings,
+  Shield,
   Sun,
+  Users,
+  X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useTheme } from "@/components/theme-provider";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-const publicLinks = [
+const publicLinks: { href: string; label: string; icon: any }[] = [
   // Removed Home link - landing page is not needed after login
 ];
 
 const studentLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/academics", label: "Academics", icon: BookOpen },
   { href: "/chat", label: "Chat", icon: MessageCircle },
   { href: "/documents", label: "Documents", icon: FileCheck },
   { href: "/tribe", label: "Tribe", icon: Users },
@@ -48,10 +48,10 @@ export function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  
+
   let theme = "light";
   let toggleTheme = () => {};
-  
+
   try {
     const themeContext = useTheme();
     theme = themeContext.theme;
@@ -59,7 +59,7 @@ export function Navbar() {
   } catch (e) {
     // Theme provider not available yet
   }
-  
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -86,19 +86,21 @@ export function Navbar() {
       : studentLinks
     : publicLinks;
 
-  console.log("Navbar - Computed links:", { 
-    isAuthenticated, 
-    userRole, 
+  console.log("Navbar - Computed links:", {
+    isAuthenticated,
+    userRole,
     linksCount: navLinks.length,
-    links: navLinks.map(l => l.label)
+    links: navLinks.map((l) => l.label),
   });
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3">
-          <Image 
-            src={theme === "dark" ? "/pal-logo-dark.svg" : "/pal-logo-light.svg"}
+          <Image
+            src={
+              theme === "dark" ? "/pal-logo-dark.svg" : "/pal-logo-light.svg"
+            }
             alt="P.A.L. Logo"
             width={56}
             height={56}
@@ -109,35 +111,22 @@ export function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden items-center gap-1 md:flex">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <link.icon className="h-4 w-4" />
-                {link.label}
-              </Link>
-            );
-          })}
-          
+          {/* Links moved to AppSidebar */}
+
           {/* Theme Toggle */}
           {mounted && (
             <button
               onClick={toggleTheme}
               className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-              title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
             >
-              {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              {theme === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
             </button>
           )}
-          
+
           {isAuthenticated ? (
             <button
               onClick={handleLogout}
@@ -188,7 +177,7 @@ export function Navbar() {
                 </Link>
               );
             })}
-            
+
             {isAuthenticated ? (
               <button
                 onClick={() => {

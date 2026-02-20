@@ -267,8 +267,8 @@ class RAGService {
       // Build prompt
       const systemPrompt =
         language === "hi"
-          ? `आप P.A.L. हैं - एक सहायक AI जो नए छात्रों की मदद करता है। दिए गए संदर्भ का उपयोग करके प्रश्न का उत्तर दें।`
-          : `You are P.A.L. - a helpful AI assistant for college onboarding. Answer the question using the provided context.`;
+          ? `आप P.A.L. हैं - एक सहायक AI जो नए छात्रों की मदद करता है। दिए गए संदर्भ का उपयोग करके प्रश्न का उत्तर दें। यदि संदर्भ पर्याप्त नहीं है, तो अपने सामान्य ज्ञान का उपयोग करके उत्तर दें।`
+          : `You are P.A.L. - a helpful AI assistant for college onboarding. Answer the question using the provided context. If the context is insufficient, use your general knowledge to provide a helpful answer.`;
 
       const prompt = `${systemPrompt}
 
@@ -280,8 +280,8 @@ Question: ${query}
 Instructions:
 - Answer in ${language === "hi" ? "Hindi" : "English"}
 - Be concise and helpful
-- If the context doesn't contain enough information, acknowledge uncertainty
-- Cite sources using [1], [2], etc.
+- If the context doesn't contain enough information, provide a general answer based on your knowledge
+- Cite sources using [1], [2], etc. only if used
 
 Answer:`;
 
@@ -290,8 +290,13 @@ Answer:`;
 
       // Calculate confidence based on source scores
       const avgScore =
-        sources.reduce((sum, s) => sum + s.score, 0) / sources.length;
-      const confidence = Math.min(avgScore * 1.2, 1.0); // Boost slightly, cap at 1.0
+        sources.length > 0
+          ? sources.reduce((sum, s) => sum + s.score, 0) / sources.length
+          : 0;
+
+      // Base confidence on retrieval, but ensure a minimum floor (0.4) for general knowledge
+      // This allows the model to answer using general knowledge without triggering the "I don't know" fallback
+      const confidence = Math.max(Math.min(avgScore * 1.2, 1.0), 0.4);
 
       return { answer, confidence };
     } catch (error) {
@@ -383,8 +388,8 @@ Answer:`;
 
         const prompt =
           language === "hi"
-            ? `आप P.A.L. हैं - एक कैंपस सहायक AI। ${profileContext}\n\nनिम्नलिखित प्रश्न का संक्षिप्त और सहायक उत्तर दें:\n\n${query}\n\nयदि आपको जानकारी नहीं है, तो कृपया स्पष्ट रूप से बताएं।`
-            : `You are P.A.L. - a helpful AI campus assistant for college onboarding.${profileContext}\n\nAnswer the following question concisely and helpfully:\n\n${query}\n\nIf you don't have specific information, please say so clearly and suggest contacting the admin.`;
+            ? `आप P.A.L. हैं - एक कैंपस सहायक AI। ${profileContext}\n\nनिम्नलिखित प्रश्न का संक्षिप्त और सहायक उत्तर दें:\n\n${query}\n\nअपने सामान्य ज्ञान का उपयोग करके सर्वोत्तम संभव सलाह दें।`
+            : `You are P.A.L. - a helpful AI campus assistant for college onboarding.${profileContext}\n\nAnswer the following question concisely and helpfully using your general knowledge:\n\n${query}\n\nProvide the best possible advice you can.`;
 
         const result = await geminiModel.generateContent(prompt);
         const answer = result.response.text();

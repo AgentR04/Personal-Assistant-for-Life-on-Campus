@@ -16,14 +16,14 @@ router.get("/profile", authenticate, async (req: Request, res: Response) => {
 
     const { data: user, error } = await supabaseAdmin
       .from("users")
-      .select("id, name, branch, batch, hostel_block, onboarding_data")
+      .select("id, name, branch, batch, hostel_block, onboarding_data, role")
       .eq("id", userId)
       .single();
 
     if (error || !user) {
       return res.json({
         success: true,
-        data: { profileComplete: false, profile: null },
+        data: { profileComplete: false, profile: null, role: null },
       });
     }
 
@@ -36,6 +36,7 @@ router.get("/profile", authenticate, async (req: Request, res: Response) => {
       success: true,
       data: {
         profileComplete,
+        role: user.role, // "student" | "admin" | "mentor"
         profile: user.onboarding_data || null,
       },
     });

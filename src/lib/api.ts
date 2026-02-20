@@ -104,6 +104,13 @@ export const api = {
         headers: { "Content-Type": "multipart/form-data" },
       }),
 
+    register: (data: {
+      documentType: string;
+      fileUrl: string;
+      fileName: string;
+      fileSize: number;
+    }) => apiClient.post("/documents/register", data),
+
     getAll: () => apiClient.get("/documents"),
 
     getById: (id: string) => apiClient.get(`/documents/${id}`),
@@ -142,9 +149,10 @@ export const api = {
     saveProfile: (profile: {
       name: string;
       collegeName: string;
-      branch: string;
-      year: string;
-      hostelResident: boolean;
+      branch?: string;
+      department?: string;
+      year?: string;
+      hostelResident?: boolean;
       interests: string[];
     }) => apiClient.post("/chat/profile", profile),
   },
@@ -207,6 +215,44 @@ export const api = {
 
     getUsers: (filters?: any) =>
       apiClient.get("/admin/users", { params: filters }),
+  },
+
+  // Feature 1: Project Matchmaker
+  projects: {
+    match: (interests: string) =>
+      apiClient.post("/projects/match", { interests }),
+    list: () => apiClient.get("/projects/list"),
+  },
+
+  // Feature 2: RPG Quest
+  quests: {
+    getStatus: () => apiClient.get("/quests/status"),
+    complete: (taskId: string) =>
+      apiClient.post("/quests/complete", { taskId }),
+    getDefinitions: () => apiClient.get("/quests/definitions"),
+  },
+
+  // Feature 3: Auto-Fill
+  autofill: {
+    extract: (formData: FormData) =>
+      apiClient.post("/autofill/extract", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    getVault: () => apiClient.get("/autofill/vault"),
+    fillForm: (formType: string) =>
+      apiClient.post("/autofill/fill", { formType }),
+    getAvailableForms: () => apiClient.get("/autofill/forms"),
+  },
+
+  // Feature 4: Magic Calendar
+  calendar: {
+    downloadICS: (studentId: string) =>
+      // Start download directly
+      window.open(
+        `${API_BASE_URL}/calendar/generate/${studentId}?token=${localStorage.getItem("token")}`,
+        "_blank",
+      ),
+    getTimetable: () => apiClient.get("/calendar/timetable"),
   },
 };
 

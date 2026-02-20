@@ -1,10 +1,11 @@
+import { AppSidebar } from "@/components/app-sidebar";
+import { Navbar } from "@/components/navbar";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TokenCleaner } from "@/components/token-cleaner";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
 import { VisualEditsMessenger } from "orchids-visual-edits";
-import { Navbar } from "@/components/navbar";
-import { TokenCleaner } from "@/components/token-cleaner";
-import { ThemeProvider } from "@/components/theme-provider";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,8 +35,15 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TokenCleaner />
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
+          <div className="flex min-h-screen bg-background">
+            <AppSidebar />
+            <div className="flex-1 flex flex-col min-w-0">
+              <Navbar />
+              <main className="flex-1 w-full mx-auto">
+                {children}
+              </main>
+            </div>
+          </div>
         </ThemeProvider>
         <VisualEditsMessenger />
       </body>

@@ -21,9 +21,13 @@ if (!checkEnvironment()) {
 // Import routes (after env check)
 import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
+import autofillRoutes from "./routes/autofill.routes";
+import calendarRoutes from "./routes/calendar.routes";
 import chatRoutes from "./routes/chat.routes";
 import documentRoutes from "./routes/document.routes";
 import notificationRoutes from "./routes/notification.routes";
+import projectMatcherRoutes from "./routes/project-matcher.routes";
+import questRoutes from "./routes/quest.routes";
 import socialRoutes from "./routes/social.routes";
 import taskRoutes from "./routes/task.routes";
 import userRoutes from "./routes/user.routes";
@@ -97,6 +101,10 @@ app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/social", socialRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/projects", projectMatcherRoutes);
+app.use("/api/v1/quests", questRoutes);
+app.use("/api/v1/autofill", autofillRoutes);
+app.use("/api/v1/calendar", calendarRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
