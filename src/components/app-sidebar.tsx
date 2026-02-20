@@ -108,7 +108,12 @@ export function AppSidebar() {
     { id: "chat", label: "AI Assistant", icon: MessageCircle },
   ];
 
-  if (pathname === "/" || pathname === "/login" || pathname === "/signup") {
+  const adminPages = [
+    { href: "/admin/documents", label: "Student Documents", icon: FileCheck },
+    { href: "/admin/bulk-upload", label: "Bulk Upload", icon: Users },
+  ];
+
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/signup/")) {
     return null;
   }
 
@@ -146,6 +151,25 @@ export function AppSidebar() {
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                     activeTab === item.id
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </Link>
+              ))}
+              
+              <div className="mt-6 px-2 py-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                User Management
+              </div>
+              {adminPages.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    pathname === item.href
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground",
                   )}

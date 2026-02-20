@@ -22,9 +22,11 @@ if (!checkEnvironment()) {
 import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 import autofillRoutes from "./routes/autofill.routes";
+import bulkUploadRoutes from "./routes/bulk-upload.routes";
 import calendarRoutes from "./routes/calendar.routes";
 import chatRoutes from "./routes/chat.routes";
 import documentRoutes from "./routes/document.routes";
+import documentOrganizationRoutes from "./routes/document-organization.routes";
 import notificationRoutes from "./routes/notification.routes";
 import projectMatcherRoutes from "./routes/project-matcher.routes";
 import questRoutes from "./routes/quest.routes";
@@ -101,10 +103,12 @@ app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/social", socialRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/admin/documents", documentOrganizationRoutes);
 app.use("/api/v1/projects", projectMatcherRoutes);
 app.use("/api/v1/quests", questRoutes);
 app.use("/api/v1/autofill", autofillRoutes);
 app.use("/api/v1/calendar", calendarRoutes);
+app.use("/api/v1/bulk-upload", bulkUploadRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

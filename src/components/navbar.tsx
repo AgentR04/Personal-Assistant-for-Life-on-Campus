@@ -49,6 +49,11 @@ export function Navbar() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Hide navbar on landing page, login, and signup pages
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup" || pathname?.startsWith("/signup/")) {
+    return null;
+  }
+
   let theme = "light";
   let toggleTheme = () => {};
 

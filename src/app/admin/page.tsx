@@ -1063,6 +1063,23 @@ export default function AdminPage() {
                         </div>
                       </button>
 
+                      <Link
+                        href="/admin/bulk-upload"
+                        className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/50 p-4 text-left hover:bg-secondary transition-colors"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-chart-2/15">
+                          <Users className="h-5 w-5 text-chart-2" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm">
+                            Bulk Upload Users
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Create profiles
+                          </p>
+                        </div>
+                      </Link>
+
                       <button
                         onClick={() => updateTab("knowledge")}
                         className="flex items-center gap-3 rounded-xl border border-border/50 bg-secondary/50 p-4 text-left hover:bg-secondary transition-colors"
